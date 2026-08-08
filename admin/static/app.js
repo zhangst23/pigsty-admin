@@ -9,6 +9,7 @@ const $ = (sel) => document.querySelector(sel);
 const statusOutput = $('#statusOutput');
 const opOutput = $('#opOutput');
 
+// 所有请求均使用相对路径，使页面可部署在子路径（如 /admin/）下
 async function api(path, opts) {
   const res = await fetch(path, opts);
   return res.json();
@@ -136,7 +137,7 @@ async function doPendingOp() {
 // 日志
 // ---------------------------------------------------------------------------
 async function refreshLog() {
-  const r = await api('/api/log');
+  const r = await api('api/log');
   const tbody = $('#logTable tbody');
   tbody.innerHTML = '';
   (r.log || []).forEach(row => {
