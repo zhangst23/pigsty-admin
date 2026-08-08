@@ -46,6 +46,8 @@ DANGER_WHITELIST = [
     "node-add", "node-rm",
     "pgsql-add", "pgsql-rm",
     "pgsql-user", "pgsql-db", "pgsql-ext",
+    "pgsql-svc", "pgsql-hba",
+    "pgmon-add", "pgmon-rm",
     "redis-add",
 ]
 
@@ -171,6 +173,71 @@ def status_pt_clusters():
             "error": ""}
 
 
+def status_pt_status():
+    """Patroni HA 集群状态（pig pt status -o json）"""
+    rc, out, err = run(["pig", "pt", "status", "-o", "json"])
+    if rc != 0:
+        return {"rc": rc, "text": out, "error": err.strip() or "pig pt status 执行失败"}
+    try:
+        d = json.loads(out)
+        data = d.get("data", {})
+    except json.JSONDecodeError:
+        return {"rc": 0, "text": out, "error": ""}
+    if not data:
+        return {"rc": 0, "text": "(未获取到集群状态)", "error": ""}
+    lines = []
+    lines.append("集群: {}".format(data.get("cluster", "?")))
+    lines.append("Leader: {}".format(data.get("leader", "?")))
+    lines.append("时间线 TL: {}".format(data.get("timeline", "?")))
+    lines.append("成员数: {}".format(data.get("member_count", "?")))
+    lines.append("服务运行: {}".format("是" if data.get("service_running") else "否"))
+    lines.append("")
+    lines.append("Members:")
+    for m in data.get("members", []):
+        lag = m.get("lag")
+        lag_s = "lag={}".format(lag) if lag is not None else "lag=0"
+        lines.append("  • {} [{}] {} ({}) {}".format(
+            m.get("member", "?"), m.get("role", "?"),
+            m.get("host", "?"), m.get("state", "?"), lag_s))
+    return {"rc": 0, "text": "\n".join(lines), "error": ""}
+
+
+def status_pb_list():
+    """pgBackRest 备份列表（pig pb list -o json）"""
+    rc, out, err = run(["pig", "pb", "list", "-o", "json"])
+    if rc != 0:
+        return {"rc": rc, "text": out, "error": err.strip() or "pig pb list 执行失败"}
+    try:
+        d = json.loads(out)
+        data = d.get("data", {})
+    except json.JSONDecodeError:
+        return {"rc": 0, "text": out, "error": ""}
+    stanzas = data.get("backups", []) if isinstance(data, dict) else []
+    if not stanzas:
+        return {"rc": 0, "text": "(未发现备份 stanza)", "error": ""}
+    lines = []
+    total = 0
+    for st in stanzas:
+        name = st.get("name", "?")
+        status = st.get("status", {}).get("message", "?")
+        bks = st.get("backup", [])
+        total += len(bks)
+        lines.append("Stanza: {}  状态: {}".format(name, status))
+        for b in bks:
+            ts = b.get("timestamp", {})
+            import datetime as _dt
+            try:
+                t = _dt.datetime.fromtimestamp(ts.get("start", 0)).strftime("%Y-%m-%d %H:%M:%S")
+            except Exception:
+                t = str(ts.get("start", "?"))
+            size = b.get("info", {}).get("size", 0)
+            lines.append("  • {} [{}] {}  size={}B  label={}".format(
+                t, b.get("type", "?"), b.get("lsn", {}).get("stop", "?"),
+                size, b.get("label", "?")))
+    lines.insert(0, "共 {} 个 stanza, {} 个备份集:\n".format(len(stanzas), total))
+    return {"rc": 0, "text": "\n".join(lines), "error": ""}
+
+
 def status_backup():
     rc, out, err = run(["pig", "pb", "info"])
     return {"rc": rc, "text": out + (("\n" + err) if err else ""), "error": err.strip()}
@@ -215,11 +282,13 @@ def list_inventory():
 def api_status():
     return [
         {"id": "pt_clusters", "name": "集群列表 (pig pt list)", "fn": status_pt_clusters},
+        {"id": "pt_status", "name": "集群HA状态 (pig pt status)", "fn": status_pt_status},
         {"id": "clusters", "name": "集群状态 (pig pg list)", "fn": status_clusters},
         {"id": "pg_status", "name": "实例状态 (pig pg status)", "fn": status_pg_status},
         {"id": "pg_role", "name": "实例角色 (pig pg role)", "fn": status_pg_role},
         {"id": "pg_ps", "name": "当前连接 (pig pg ps)", "fn": status_pg_ps},
         {"id": "pg_dbs", "name": "数据库列表 (pig pg psql)", "fn": status_pg_dbs},
+        {"id": "pb_list", "name": "备份列表 (pig pb list)", "fn": status_pb_list},
         {"id": "backup", "name": "备份信息 (pig pb info)", "fn": status_backup},
         {"id": "repo", "name": "本地仓库 (files)", "fn": status_repo},
         {"id": "inventory", "name": "主机清单 (pigsty.yml)", "fn": list_inventory},
@@ -299,6 +368,54 @@ def op_redis_add(params):
     return rc, out, err
 
 
+def op_pg_svc(params):
+    sel = (params.get("sel") or "").strip()
+    if not sel:
+        return 1, "", "请提供目标 (集群名 / 选择器)"
+    rc, out, err = run(["pig", "do", "pgsql-svc", sel])
+    return rc, out, err
+
+
+def op_pg_hba(params):
+    sel = (params.get("sel") or "").strip()
+    if not sel:
+        return 1, "", "请提供目标 (集群名 / 选择器)"
+    rc, out, err = run(["pig", "do", "pgsql-hba", sel])
+    return rc, out, err
+
+
+def op_pg_switchover(params):
+    cls = (params.get("cluster") or "").strip()
+    if not cls:
+        return 1, "", "请提供集群名称"
+    rc, out, err = run(["pig", "pt", "switchover", cls, "--force"])
+    return rc, out, err
+
+
+def op_pgmon_add(params):
+    cls = (params.get("cluster") or "").strip()
+    if not cls:
+        return 1, "", "请提供集群名称"
+    rc, out, err = run_script("pgmon-add", [cls])
+    return rc, out, err
+
+
+def op_pgmon_rm(params):
+    cls = (params.get("cluster") or "").strip()
+    if not cls:
+        return 1, "", "请提供集群名称"
+    rc, out, err = run_script("pgmon-rm", [cls])
+    return rc, out, err
+
+
+def op_citus_add(params):
+    cls = (params.get("cluster") or "").strip()
+    if not cls:
+        return 1, "", "请提供 Citus 集群名称"
+    rc, out, err = run_script("citus-add", [cls])
+    return rc, out, err
+
+
 def api_ops():
     return [
         {"id": "node_add", "name": "新增节点 (node-add)", "fn": op_node_add,
@@ -328,6 +445,16 @@ def api_ops():
              {"key": "exts", "label": "扩展名（空格分隔，可空）", "required": False},
          ]},
         {"id": "redis_add", "name": "新增 Redis 集群 (redis-add)", "fn": op_redis_add,
+         "fields": [{"key": "cluster", "label": "集群名", "required": True}]},
+        {"id": "pg_svc", "name": "重载 PG 服务 (pg do pgsql-svc)", "fn": op_pg_svc,
+         "fields": [{"key": "sel", "label": "目标 (集群名/选择器，如 pg-meta)", "required": True}]},
+        {"id": "pg_hba", "name": "刷新 HBA 规则 (pg do pgsql-hba)", "fn": op_pg_hba,
+         "fields": [{"key": "sel", "label": "目标 (集群名/选择器，如 pg-meta)", "required": True}]},
+        {"id": "pg_switchover", "name": "Patroni 主从切换 (pig pt switchover)", "fn": op_pg_switchover,
+         "fields": [{"key": "cluster", "label": "集群名 (如 pg-meta)", "required": True}]},
+        {"id": "pgmon_add", "name": "添加远程监控目标 (pgmon-add)", "fn": op_pgmon_add,
+         "fields": [{"key": "cluster", "label": "集群名", "required": True}]},
+        {"id": "pgmon_rm", "name": "移除远程监控目标 (pgmon-rm)", "fn": op_pgmon_rm,
          "fields": [{"key": "cluster", "label": "集群名", "required": True}]},
     ]
 
