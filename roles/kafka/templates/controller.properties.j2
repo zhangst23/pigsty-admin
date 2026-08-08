@@ -1,0 +1,10 @@
+{% if kafka_security == 'scram' %}
+security.protocol=SSL
+ssl.keystore.type=PEM
+ssl.keystore.location=/etc/kafka/pki/kafka.pem
+ssl.truststore.type=PEM
+ssl.truststore.location=/etc/pki/ca.crt
+ssl.endpoint.identification.algorithm=https
+{% else %}
+security.protocol=PLAINTEXT
+{% endif %}

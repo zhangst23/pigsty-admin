@@ -1,0 +1,51 @@
+---
+# The kafka role converges one Kafka cluster to its declared state in a single
+# pass. It is idempotent: a no-change run on a healthy cluster restarts nothing,
+# and it never wipes an existing cluster (teardown lives in the kafka_remove role
+# and the kafka-rm.yml playbook). All cross-node sequencing (dynamic-quorum
+# bootstrap, one-at-a-time broker admission, strict rolling restart) is owned by
+# launch.yml, so kafka.yml stays a thin node_id + kafka wrapper like pgsql.yml.
+
+#--------------------------------------------------------------#
+# Kafka Identity                                     [kafka-id]
+#--------------------------------------------------------------#
+# kafka_topology, kafka_endpoint, kafka_assert, kafka_print
+- import_tasks: identity.yml
+  tags: [ always, kafka-id ]
+
+#--------------------------------------------------------------#
+# Install Kafka                                 [kafka_install]
+#--------------------------------------------------------------#
+# kafka_user, kafka_pkg
+- import_tasks: install.yml
+  tags: kafka_install
+
+#--------------------------------------------------------------#
+# Render Config, Manifest & Format Storage       [kafka_config]
+#--------------------------------------------------------------#
+# kafka_dir, kafka_meta, kafka_manifest, kafka_security, kafka_fingerprint,
+# kafka_format, kafka_lifecycle
+- import_tasks: config.yml
+  tags: kafka_config
+
+#--------------------------------------------------------------#
+# Bootstrap / Converge / Roll Services           [kafka_launch]
+#--------------------------------------------------------------#
+# kafka_commission
+- import_tasks: launch.yml
+  tags: kafka_launch
+
+#--------------------------------------------------------------#
+# Provision Users, ACLs, Quotas & Topics      [kafka_provision]
+#--------------------------------------------------------------#
+# kafka_validate, kafka_drift
+- import_tasks: provision.yml
+  tags: kafka_provision
+
+#--------------------------------------------------------------#
+# Setup Monitoring & Register Targets           [kafka_monitor]
+#--------------------------------------------------------------#
+# kafka_exporter, kafka_register
+- import_tasks: monitor.yml
+  tags: [ kafka_monitor, monitor ]
+...

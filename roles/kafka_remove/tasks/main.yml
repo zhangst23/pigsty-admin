@@ -1,0 +1,193 @@
+---
+#--------------------------------------------------------------#
+# Derive Kafka Identity                               [kafka_id]
+#--------------------------------------------------------------#
+- name: derive kafka remove identity
+  tags: [ always, kafka-id ]
+  set_fact:
+    kafka_instance: "{{ kafka_cluster }}-{{ kafka_seq }}"
+
+#--------------------------------------------------------------#
+# Honor kafka_safeguard                        [kafka_safeguard]
+#--------------------------------------------------------------#
+- name: ABORT due to kafka_safeguard enabled
+  connection: local
+  when: kafka_safeguard | bool
+  tags: [ always, kafka_safeguard ]
+  any_errors_fatal: true
+  ignore_errors: false
+  fail: msg="Abort due to kafka_safeguard for {{ kafka_cluster }} @ {{ inventory_hostname }} is enabled, override with -e kafka_safeguard=false"
+
+#--------------------------------------------------------------#
+# Deregister Monitoring Targets               [kafka_deregister]
+#--------------------------------------------------------------#
+# remove the kafka victoria target file from every infra node
+- name: deregister kafka targets from victoria
+  when: not kafka_safeguard | bool
+  tags: [ kafka_deregister, deregister, rm_metrics ]
+  ignore_errors: true
+  delegate_to: "{{ item }}"
+  loop: "{{ groups['infra'] | default([]) }}"
+  file: path=/infra/targets/kafka/{{ kafka_instance }}.yml state=absent
+
+#--------------------------------------------------------------#
+# Stop Kafka Services                                    [kafka]
+#--------------------------------------------------------------#
+# kafka_exporter only exists on the two selected broker nodes, and a unit may
+# already be gone on re-entry: a missing service is expected, not a failure
+- name: stop kafka services
+  when: not kafka_safeguard | bool
+  tags: [ kafka, kafka_config, kafka_data ]
+  failed_when: false
+  systemd: name={{ item }} state=stopped enabled=no daemon_reload=yes
+  loop: [ kafka_exporter, kafka ]
+
+#--------------------------------------------------------------#
+# Retire Cluster Membership                       [kafka_retire]
+#--------------------------------------------------------------#
+# removing a strict subset of a cluster retires the leaving member from live
+# metadata through a surviving member: its kraft voter entry (if any) and its
+# broker registration. All actions delegate to the survivor, so this also
+# works when the leaving node itself is dead (the play tolerates unreachable
+# hosts). Partition replicas still assigned to the retired broker stay
+# under-replicated until an identically-numbered replacement rejoins via
+# kafka.yml, or until they are reassigned explicitly.
+- name: derive kafka retirement topology
+  when: not kafka_safeguard | bool
+  tags: kafka_retire
+  set_fact:
+    kafka_rm_survivor_internal: "{{ kafka_rm_outsiders | first | default('') }}"
+    kafka_rm_ctl_survivor_internal: >-
+      {%- set found = [] -%}
+      {%- for host in kafka_rm_outsiders -%}
+      {%-   if hostvars[host].kafka_role | default('combined') in ['combined', 'controller'] -%}
+      {%-     set _ = found.append(host) -%}
+      {%-   endif -%}
+      {%- endfor -%}
+      {{ found | first | default('') }}
+  vars:
+    kafka_rm_members: >-
+      {{ hostvars | dict2items | selectattr('value.kafka_cluster', 'defined')
+         | selectattr('value.kafka_cluster', 'equalto', kafka_cluster)
+         | map(attribute='key') | list | sort }}
+    kafka_rm_outsiders: "{{ kafka_rm_members | difference(ansible_play_hosts_all) | sort }}"
+
+- name: inspect live quorum for retirement
+  when: not kafka_safeguard | bool and kafka_rm_ctl_survivor_internal | length > 0
+  tags: kafka_retire
+  delegate_to: "{{ kafka_rm_ctl_survivor_internal }}"
+  become_user: kafka
+  command: >-
+    /opt/kafka/bin/kafka-metadata-quorum.sh
+    --bootstrap-controller {{ kafka_rm_ctl_survivor_internal }}:{{ hostvars[kafka_rm_ctl_survivor_internal].kafka_controller_port | default(9093) }}
+    --command-config /etc/kafka/controller.properties describe --status
+  register: kafka_rm_quorum_internal
+  changed_when: false
+  failed_when: false
+
+# quorum membership changes are strictly serialized across leaving members
+- name: retire kraft voter entry
+  when: not kafka_safeguard | bool and kafka_rm_voter_directory_internal | length > 0
+  tags: kafka_retire
+  throttle: 1
+  delegate_to: "{{ kafka_rm_ctl_survivor_internal }}"
+  become_user: kafka
+  command: >-
+    /opt/kafka/bin/kafka-metadata-quorum.sh
+    --bootstrap-controller {{ kafka_rm_ctl_survivor_internal }}:{{ hostvars[kafka_rm_ctl_survivor_internal].kafka_controller_port | default(9093) }}
+    --command-config /etc/kafka/controller.properties
+    remove-controller --controller-id {{ kafka_seq }}
+    --controller-directory-id {{ kafka_rm_voter_directory_internal }}
+  vars:
+    kafka_rm_voter_directory_internal: >-
+      {{ ((kafka_rm_quorum_internal.stdout | default('')
+          | regex_search('CurrentVoters:\s*(\[.*\])', '\1') | default(['[]'], true) | first | from_json)
+         | selectattr('id', 'equalto', kafka_seq | int)
+         | map(attribute='directoryId') | list | first | default('')) }}
+
+- name: retire broker registration
+  when: not kafka_safeguard | bool and kafka_rm_survivor_internal | length > 0
+  tags: kafka_retire
+  delegate_to: "{{ kafka_rm_survivor_internal }}"
+  become_user: kafka
+  command: >-
+    /opt/kafka/bin/kafka-cluster.sh unregister
+    --bootstrap-server {{ kafka_rm_survivor_internal }}:{{ hostvars[kafka_rm_survivor_internal].kafka_port | default(9092) }}
+    --command-config /etc/kafka/admin.properties --id {{ kafka_seq }}
+  register: kafka_rm_unregister_internal
+  changed_when: "'no longer registered' in kafka_rm_unregister_internal.stdout | default('')"
+  failed_when: false
+
+- name: warn about partition replicas left on retired broker
+  when: not kafka_safeguard | bool and kafka_rm_survivor_internal | length > 0
+  tags: kafka_retire
+  delegate_to: "{{ kafka_rm_survivor_internal }}"
+  become_user: kafka
+  shell: >-
+    /opt/kafka/bin/kafka-topics.sh
+    --bootstrap-server {{ kafka_rm_survivor_internal }}:{{ hostvars[kafka_rm_survivor_internal].kafka_port | default(9092) }}
+    --command-config /etc/kafka/admin.properties --describe 2>/dev/null
+    | grep -cE 'Replicas: ([0-9]+,)*{{ kafka_seq }}(,[0-9]+)*([^0-9]|$)' || true
+  args: { executable: /bin/bash }
+  register: kafka_rm_replicas_internal
+  changed_when: false
+
+- name: report partition replicas left on retired broker
+  when: >-
+    not kafka_safeguard | bool and kafka_rm_survivor_internal | length > 0 and
+    kafka_rm_replicas_internal.stdout | default('0') | trim | int > 0
+  tags: kafka_retire
+  debug:
+    msg: >-
+      {{ kafka_rm_replicas_internal.stdout | trim }} partition replicas remain
+      assigned to retired broker {{ kafka_seq }}: they stay under-replicated
+      until a replacement with the same kafka_seq rejoins via kafka.yml, or
+      until you reassign them with a reviewed kafka-reassign-partitions.sh plan.
+
+#--------------------------------------------------------------#
+# Remove Runtime Integration                      [kafka_config]
+#--------------------------------------------------------------#
+- name: remove kafka runtime integration
+  when: not kafka_safeguard | bool
+  tags: kafka_config
+  ignore_errors: true
+  block:
+    - name: remove kafka exporter config
+      file: path={{ item }} state=absent
+      loop:
+        - /etc/kafka_exporter
+        - /etc/default/kafka
+        - /etc/default/kafka_exporter
+        - /etc/systemd/system/kafka.service
+        - /etc/systemd/system/kafka_exporter.service
+        - /usr/local/bin/pigsty-kafka-health
+        - /usr/local/bin/pigsty-kafka-provision
+    - name: reload systemd after kafka unit removal
+      systemd: daemon_reload=yes
+
+#--------------------------------------------------------------#
+# Remove Kafka Data & Recovery State                [kafka_data]
+#--------------------------------------------------------------#
+# /etc/kafka contains the node manifest and secret copies required to re-adopt
+# retained storage, so it follows the same explicit data-removal gate
+- name: remove kafka data and recovery state
+  when: not kafka_safeguard | bool and kafka_rm_data | bool
+  tags: kafka_data
+  ignore_errors: true
+  file: path={{ item }} state=absent
+  loop: [ "{{ kafka_data }}" , /etc/kafka ]
+
+
+#--------------------------------------------------------------#
+# Uninstall Kafka Packages                           [kafka_pkg]
+#--------------------------------------------------------------#
+# only the kafka-stack payload (kafka/kafka-exporter/jmx-exporter) is removed;
+# the shared java-runtime is never uninstalled
+- name: uninstall kafka packages
+  when: not kafka_safeguard | bool and kafka_rm_pkg | bool
+  tags: kafka_pkg
+  ignore_errors: true
+  package:
+    name: "{{ ((package_map['kafka-stack'] | default('kafka')).replace(',', ' ').split()) | unique | list }}"
+    state: absent
+...

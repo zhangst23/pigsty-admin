@@ -1,0 +1,119 @@
+---
+#--------------------------------------------------------------#
+# Derive Kafka Identity                               [kafka-id]
+#--------------------------------------------------------------#
+- name: derive kafka identity
+  set_fact:
+    kafka_instance: "{{ kafka_cluster }}-{{ kafka_seq }}"
+    kafka_data_dir_internal: "{{ kafka_data }}/data"
+    kafka_metadata_dir_internal: "{{ kafka_data }}/metadata"
+    kafka_process_roles: >-
+      {{ 'broker,controller' if kafka_role == 'combined'
+         else ('broker' if kafka_role == 'broker' else 'controller') }}
+    kafka_has_broker: "{{ kafka_role in ['combined', 'broker'] }}"
+    kafka_has_controller: "{{ kafka_role in ['combined', 'controller'] }}"
+
+#--------------------------------------------------------------#
+# Derive Kafka Topology                         [kafka_topology]
+#--------------------------------------------------------------#
+- name: derive kafka topology
+  set_fact:
+    kafka_cluster_members: "{{ kafka_members }}"
+    kafka_node_ids: "{{ kafka_members | map('extract', hostvars, 'kafka_seq') | map('int') | list }}"
+    kafka_controller_nodes: >-
+      {%- set nodes = [] -%}
+      {%- for host in kafka_members -%}
+      {%-   if hostvars[host].kafka_role | default('combined') in ['combined', 'controller'] -%}
+      {%-     set _ = nodes.append({'host': host, 'seq': hostvars[host].kafka_seq | int}) -%}
+      {%-   endif -%}
+      {%- endfor -%}
+      {{ nodes | sort(attribute='seq') }}
+    kafka_broker_nodes: >-
+      {%- set nodes = [] -%}
+      {%- for host in kafka_members -%}
+      {%-   if hostvars[host].kafka_role | default('combined') in ['combined', 'broker'] -%}
+      {%-     set _ = nodes.append({'host': host, 'seq': hostvars[host].kafka_seq | int}) -%}
+      {%-   endif -%}
+      {%- endfor -%}
+      {{ nodes | sort(attribute='seq') }}
+    kafka_rack_flags: >-
+      {%- set flags = [] -%}
+      {%- for host in kafka_members -%}
+      {%-   if hostvars[host].kafka_role | default('combined') in ['combined', 'broker'] -%}
+      {%-     set _ = flags.append(hostvars[host].kafka_rack is defined) -%}
+      {%-   endif -%}
+      {%- endfor -%}
+      {{ flags }}
+    kafka_role_flags: >-
+      {%- set flags = [] -%}
+      {%- for host in kafka_members -%}
+      {%-   set _ = flags.append(hostvars[host].kafka_role is defined) -%}
+      {%- endfor -%}
+      {{ flags }}
+  vars:
+    kafka_members: >-
+      {{ hostvars | dict2items | selectattr('value.kafka_cluster', 'defined')
+         | selectattr('value.kafka_cluster', 'equalto', kafka_cluster)
+         | map(attribute='key') | list | sort }}
+
+#--------------------------------------------------------------#
+# Derive Kafka Endpoints                        [kafka_endpoint]
+#--------------------------------------------------------------#
+- name: derive kafka endpoints
+  set_fact:
+    kafka_admin_host_internal: "{{ (kafka_broker_nodes | first).host }}"
+    kafka_initial_admin_host_internal: "{{ (kafka_controller_nodes | first).host }}"
+    kafka_exporter_hosts_internal: "{{ (kafka_broker_nodes | map(attribute='host') | list)[:2] }}"
+    kafka_controller_bootstrap_internal: >-
+      {{ kafka_controller_nodes | map(attribute='host')
+         | zip(kafka_controller_nodes | map(attribute='host')
+         | map('extract', hostvars, 'kafka_controller_port') | map('default', 9093, true))
+         | map('join', ':') | join(',') }}
+    kafka_broker_bootstrap_internal: >-
+      {{ kafka_broker_nodes | map(attribute='host')
+         | zip(kafka_broker_nodes | map(attribute='host')
+         | map('extract', hostvars, 'kafka_port') | map('default', 9092, true))
+         | map('join', ':') | join(',') }}
+
+#--------------------------------------------------------------#
+# Assert Kafka Identity                          [kafka_assert]
+#--------------------------------------------------------------#
+- name: assert kafka identity
+  assert:
+    that:
+      - (kafka_cluster | regex_search('^[A-Za-z0-9][A-Za-z0-9_-]*$')) is not none
+      - (kafka_seq | string | regex_search('^[0-9]+$')) is not none
+      - kafka_role in ['combined', 'broker', 'controller']
+      - kafka_security in ['plaintext', 'scram']
+      - kafka_cluster_members | difference(ansible_play_hosts_all) | length == 0
+      - kafka_node_ids | unique | length == kafka_node_ids | length
+      - kafka_controller_nodes | length > 0
+      - kafka_broker_nodes | length > 0
+      - kafka_role_flags | unique | length == 1
+      - kafka_rack_flags | unique | length == 1
+      - (kafka_data | regex_search('^/[^\\s]+$')) is not none
+      - kafka_data not in ['/', '/data', '/var', '/etc', '/opt', '/usr', '/home', '/root', '/pg']
+      - "[kafka_port, kafka_controller_port, kafka_exporter_port, kafka_jmx_exporter_port] | map('int') | unique | length == 4"
+      - kafka_parameters.keys() | select('match', '^(process.roles|node.id|controller.quorum\\..*|listeners|advertised.listeners|listener.security.protocol.map|inter.broker.listener.name|controller.listener.names|log.dirs|metadata.log.dir|min.insync.replicas|default.replication.factor|offsets.topic.replication.factor|transaction.state.log.replication.factor|transaction.state.log.min.isr|share.coordinator.state.topic.replication.factor|share.coordinator.state.topic.min.isr|broker.rack|authorizer.class.name|super.users|allow.everyone.if.no.acl.found|sasl\\..*|ssl\\..*|listener\\..*)$') | list | length == 0
+    fail_msg: >-
+      Invalid Kafka API or topology. Every selected kafka cluster must be complete:
+      partial member selection is refused, while multiple whole clusters (or a bare
+      run over the full inventory) are fine; kafka_role must be declared on every
+      member or omitted from every member; rack must be configured on all
+      broker-capable nodes or none; role-owned topology/listener/security/storage/
+      replication keys are reserved.
+
+#--------------------------------------------------------------#
+# Print Kafka Identity                            [kafka_print]
+#--------------------------------------------------------------#
+# anchored on the cluster admin host so a multi-cluster play prints one
+# summary per cluster (run_once would print only the first cluster's)
+- name: print kafka identity
+  when: inventory_hostname == kafka_admin_host_internal
+  debug:
+    msg: >-
+      INIT KAFKA {{ kafka_cluster }}: {{ kafka_controller_nodes | length }} controller,
+      {{ kafka_broker_nodes | length }} broker, security={{ kafka_security }}
+      {%- if kafka_controller_nodes | length | int is even %} | WARNING: even controller count, odd is recommended{% endif %}
+      {%- if kafka_security == 'plaintext' %} | WARNING: plaintext listeners, use kafka_security=scram for production{% endif %}
+...

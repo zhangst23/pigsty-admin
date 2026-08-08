@@ -1,0 +1,96 @@
+#!/usr/bin/env ansible-playbook
+---
+#==============================================================#
+# File      :   kafka.yml
+# Desc      :   init kafka cluster / instance (dynamic KRaft)
+# Ctime     :   2024-01-01
+# Mtime     :   2026-07-17
+# Path      :   kafka.yml
+# Docs      :   https://pigsty.io/docs/kafka/playbook
+# License   :   Apache-2.0 @ https://pigsty.io/docs/about/license/
+# Copyright :   2018-2026  Ruohang Feng / Vonng (rh@vonng.com)
+#==============================================================#
+- name: KAFKA
+  become: true
+  hosts: all
+  gather_facts: no
+  any_errors_fatal: true
+  roles:
+    - { role: node_id ,tags: [id, node-id] ,when: kafka_cluster is defined and kafka_seq is defined } # get node identity (always)
+    - { role: kafka   ,tags: kafka         ,when: kafka_cluster is defined and kafka_seq is defined } # init & converge kafka cluster
+
+
+#--------------------------------------------------------------#
+# Usage
+#--------------------------------------------------------------#
+#  Every selected kafka cluster must be complete: partial member selection is
+#  refused, while one cluster, several clusters, or a bare run over the whole
+#  inventory are all fine. The role converges each cluster to its declared
+#  state: fresh clusters bootstrap in parallel, healthy clusters roll changed
+#  nodes one at a time (serial within a cluster, concurrent across clusters),
+#  and a no-change run restarts nothing.
+#
+#  Init / converge kafka clusters
+#    ./kafka.yml                       # create / converge ALL kafka clusters
+#    ./kafka.yml -l kf-main            # bootstrap, or converge to declared state
+#    ./kafka.yml -l kf-main --check    # dry run first
+#
+#  Expand a cluster (new combined/broker/controller nodes declared in inventory)
+#    ./kafka.yml -l kf-main            # brokers are admitted and controllers
+#                                      # join the dynamic quorum, one at a time
+#
+#  Replace a dead node (keep its ip and kafka_seq):
+#    ./kafka-rm.yml -l 10.10.10.13     # retire dead voter & broker registration
+#    ./node.yml     -l 10.10.10.13     # provision the replacement machine
+#    ./kafka.yml    -l kf-main         # format, catch up, rejoin & promote
+#
+#  Reconcile topics/users, or refresh monitoring registration
+#    ./kafka.yml -l kf-main                          # reconcile everything (idempotent)
+#    ./kafka.yml -l kf-main -t register              # re-register victoria targets only
+#
+#  Remove a cluster: use the separate teardown playbook
+#    ./kafka-rm.yml -l kf-main
+#
+#  Default combined cluster:
+#  kf-main:
+#    hosts:
+#      10.10.10.11: { kafka_seq: 1 }
+#      10.10.10.12: { kafka_seq: 2 }
+#      10.10.10.13: { kafka_seq: 3 }
+#    vars: { kafka_cluster: kf-main }
+#
+#  Split topology declares kafka_role (combined|broker|controller) on every node.
+#  Broker listens on 9092 and the kraft controller on 9093 by default.
+#
+#--------------------------------------------------------------#
+# Tasks
+#--------------------------------------------------------------#
+# kafka-id        : derive & assert kafka cluster identity and topology
+#
+# kafka_install   : create os user & install kafka packages
+#   - kafka_user        : create kafka os user & group
+#   - kafka_pkg         : install kafka-stack & java-runtime packages
+#
+# kafka_config    : render config, manage bootstrap manifest, format storage
+#   - kafka_dir         : create kafka data & config directories
+#   - kafka_meta        : inspect on-disk KRaft metadata identity
+#   - kafka_manifest    : resolve / create the bootstrap manifest
+#   - kafka_security    : issue certs, secrets, and scram credentials
+#   - kafka_fingerprint : derive the static-config fingerprint (restart trigger)
+#   - kafka_format      : format uninitialized storage (dynamic-quorum mode)
+#   - kafka_lifecycle   : classify this run as converge or strict rolling
+#
+# kafka_launch    : bring services to the declared state
+#   - converge          : parallel bootstrap of a fresh/unhealthy cluster
+#   - join              : format/observer/add-controller quorum join, one at a time
+#   - admit             : start & gate each new broker one at a time
+#   - roll              : quorum/minISR-gated rolling restart of changed nodes
+#   - kafka_commission  : commission manifest & record proven static state
+#
+# kafka_provision : provision declared users, acls, quotas & topics
+#
+# kafka_monitor   : setup monitoring and register targets to infra
+#   - kafka_exporter    : config & launch kafka_exporter on selected nodes
+#   - kafka_register    : register kafka/kafka_exporter to victoria [add_metrics]
+#--------------------------------------------------------------#
+...
