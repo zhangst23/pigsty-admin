@@ -120,6 +120,31 @@ def status_pg_ps():
     return {"rc": rc, "text": out + (("\n" + err) if err else ""), "error": err.strip()}
 
 
+def status_pg_dbs():
+    """列出本实例所有非模板数据库（pig pg psql）。"""
+    rc, out, err = run(["pig", "pg", "psql", "postgres", "-c",
+                        "SELECT datname FROM pg_database "
+                        "WHERE NOT datistemplate ORDER BY datname;"])
+    if rc != 0:
+        return {"rc": rc, "text": out, "error": err.strip() or "查询数据库列表失败"}
+    # psql 输出含表头/分隔线/行数，简单清洗：取 datname 列
+    lines = out.splitlines()
+    names = []
+    for ln in lines:
+        ln = ln.strip()
+        if not ln or ln.startswith("-") or ln.startswith("datname") \
+           or ln.startswith("(") or ln.endswith("rows)") \
+           or ln.lower().startswith("time:") or ln.lower().startswith("select "):
+            continue
+        names.append(ln)
+    if not names:
+        return {"rc": 0, "text": "(未发现业务数据库)", "error": ""}
+    return {"rc": 0,
+            "text": "共 {} 个数据库:\n".format(len(names)) +
+                    "\n".join("  • {}".format(n) for n in names),
+            "error": ""}
+
+
 def status_pt_clusters():
     """列出所有 Patroni 集群名称（pig pt list -f json）。"""
     rc, out, err = run(["pig", "pt", "list", "-f", "json"])
@@ -194,6 +219,7 @@ def api_status():
         {"id": "pg_status", "name": "实例状态 (pig pg status)", "fn": status_pg_status},
         {"id": "pg_role", "name": "实例角色 (pig pg role)", "fn": status_pg_role},
         {"id": "pg_ps", "name": "当前连接 (pig pg ps)", "fn": status_pg_ps},
+        {"id": "pg_dbs", "name": "数据库列表 (pig pg psql)", "fn": status_pg_dbs},
         {"id": "backup", "name": "备份信息 (pig pb info)", "fn": status_backup},
         {"id": "repo", "name": "本地仓库 (files)", "fn": status_repo},
         {"id": "inventory", "name": "主机清单 (pigsty.yml)", "fn": list_inventory},

@@ -6,7 +6,12 @@
 ## 功能
 
 ### 📊 状态查看（只读，默认开启）
+- 集群列表：`pig pt list -f json`（列出所有 Patroni 集群名）
 - 集群状态：`pig pg list`
+- 实例状态：`pig pg status`
+- 实例角色：`pig pg role`
+- 当前连接：`pig pg ps -a`
+- 数据库列表：`pig pg psql -c "SELECT datname ..."`（本实例所有业务库）
 - 备份信息：`pig pb info`
 - 本地仓库：`files/` 目录
 - 主机清单：解析 `pigsty.yml`
@@ -24,6 +29,33 @@
 | 新增 Redis 集群 | `bin/redis-add` | 初始化 Redis 集群 |
 
 > 所有危险操作在 Web 上会弹窗二次确认，且默认 **禁用**，需用 `ADMIN_DANGER=1` 启动。
+
+## 创建数据库操作流程
+
+Pigsty 采用「配置即真相」：数据库必须先在 `pigsty.yml` 中声明，才能通过 playbook 创建。
+直接凭空建库会被拒绝，并报 `define database xxx in pg_databases first`。
+
+1. **在 `pigsty.yml` 声明库**（以 `pg-meta` 集群为例，在其 `vars.pg_databases` 下追加）：
+   ```yaml
+   pg_databases:
+     - name: meta
+       ...
+     - name: mydb          # 新增
+       comment: "created via admin webui"
+   ```
+   可一并指定 `owner` / `extensions` / `schemas` / `baseline` 等。
+
+2. **通过 Web 创建**：在「运维操作 → 创建库」填写 **集群名**（如 `pg-meta`）与
+   **库名**（如 `mydb`），确认执行，等价于：
+   ```bash
+   ./pgsql-db.yml -l pg-meta -e dbname=mydb
+   ```
+   该 playbook 会自动：建立数据库、注册 pgbouncer 入口、注册 Grafana 数据源。
+
+3. **验证**：在「状态查看 → 数据库列表」中即可看到新建的库。
+
+> 若仅需临时建库、不进入版本管理，可绕过配置直接用 `psql` 创建，但属于配置漂移，
+> 后续重跑 `pgsql.yml` 不会自动纳管该库。
 
 ## 启动
 

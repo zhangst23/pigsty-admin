@@ -22,8 +22,21 @@
     <!-- 只读状态 -->
     <section class="panel">
       <h2>📊 状态查看 <span class="hint">（只读）</span></h2>
+      <details class="guide">
+        <summary>📝 创建数据库操作流程</summary>
+        <ol>
+          <li>在 <code>pigsty.yml</code> 对应集群的 <code>pg_databases</code> 下声明库名，例如：
+            <pre>- name: mydb
+  comment: "created via admin webui"</pre></li>
+          <li>在「运维操作 → 创建库」填写 <b>集群名</b> 与 <b>库名</b>，确认执行
+            <code>./pgsql-db.yml -l &lt;集群&gt; -e dbname=&lt;库名&gt;</code>。</li>
+          <li>未先在 <code>pg_databases</code> 声明会报
+            <code>define database xxx in pg_databases first</code>，属正常校验。</li>
+        </ol>
+      </details>
       <div class="status-grid" id="statusGrid"></div>
       <div class="output-wrap">
+        <button class="copy-btn" id="copyStatus" title="复制内容">⧉ 复制</button>
         <pre id="statusOutput" class="output">点击上方按钮查看...</pre>
       </div>
     </section>
@@ -33,6 +46,7 @@
       <h2>🛠 运维操作 <span class="hint" id="dangerHint"></span></h2>
       <div class="ops-grid" id="opsGrid"></div>
       <div class="output-wrap">
+        <button class="copy-btn" id="copyOp" title="复制内容">⧉ 复制</button>
         <pre id="opOutput" class="output">执行结果将显示在此...</pre>
       </div>
     </section>

@@ -27,6 +27,8 @@ async function init() {
   $('#refreshLog').addEventListener('click', refreshLog);
   $('#modalCancel').addEventListener('click', closeModal);
   $('#modalConfirm').addEventListener('click', doPendingOp);
+  $('#copyStatus').addEventListener('click', () => copyOutput(statusOutput, $('#copyStatus')));
+  $('#copyOp').addEventListener('click', () => copyOutput(opOutput, $('#copyOp')));
 
   let cfg;
   try {
@@ -71,6 +73,26 @@ async function runStatus(s) {
   const r = await api('api/status/' + s.id);
   statusOutput.textContent = (r.text || '(空)') +
     (r.error ? '\n\n[错误] ' + r.error : '');
+}
+
+async function copyOutput(target, btn) {
+  const text = target.textContent || '';
+  if (!text.trim()) return;
+  try {
+    await navigator.clipboard.writeText(text);
+  } catch (e) {
+    // 回退方案：execCommand
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+  }
+  const old = btn.textContent;
+  btn.textContent = '✓ 已复制';
+  btn.classList.add('copied');
+  setTimeout(() => { btn.textContent = old; btn.classList.remove('copied'); }, 1500);
 }
 
 // ---------------------------------------------------------------------------

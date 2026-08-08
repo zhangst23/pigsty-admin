@@ -22,7 +22,10 @@ body{background:var(--bg);color:var(--text);font:14px/1.5 -apple-system,"Segoe U
 .btn.ghost{background:transparent}
 .btn.danger{background:var(--danger);border-color:var(--danger);color:#fff;font-weight:600;text-align:center}
 .btn.running{opacity:.6;cursor:progress}
-.output-wrap{margin-top:6px}
+.output-wrap{margin-top:6px;position:relative}
+.copy-btn{position:absolute;top:8px;right:8px;z-index:2;background:var(--panel2);color:var(--muted);border:1px solid var(--border);border-radius:6px;padding:4px 10px;cursor:pointer;font-size:12px;transition:.15s}
+.copy-btn:hover{border-color:var(--accent);color:var(--text)}
+.copy-btn.copied{color:var(--ok);border-color:var(--ok)}
 .output{background:#0a0c12;border:1px solid var(--border);border-radius:8px;padding:14px;min-height:120px;max-height:420px;overflow:auto;white-space:pre-wrap;font:12.5px/1.55 "SFMono-Regular",Consolas,monospace;color:#cdd3e0}
 .log-table{width:100%;border-collapse:collapse;margin-top:10px;font-size:12.5px}
 .log-table th,.log-table td{border-bottom:1px solid var(--border);padding:8px 10px;text-align:left;vertical-align:top}
@@ -40,5 +43,10 @@ body{background:var(--bg);color:var(--text);font:14px/1.5 -apple-system,"Segoe U
 .field{display:flex;flex-direction:column;gap:4px;margin-bottom:10px}
 .field label{font-size:12px;color:var(--muted)}
 .field input{background:#0a0c12;border:1px solid var(--border);border-radius:6px;padding:8px;color:var(--text);font-size:13px}
+.guide{background:var(--panel2);border:1px solid var(--border);border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:12.5px;color:var(--muted)}
+.guide summary{cursor:pointer;color:var(--text);font-weight:600;font-size:13px}
+.guide ol{margin:10px 0 4px 18px;line-height:1.8}
+.guide code{background:#0a0c12;border:1px solid var(--border);border-radius:4px;padding:1px 5px;color:#cdd3e0;font-family:"SFMono-Regular",Consolas,monospace;font-size:12px}
+.guide pre{background:#0a0c12;border:1px solid var(--border);border-radius:6px;padding:8px 10px;margin:6px 0;overflow:auto;white-space:pre-wrap;font:12px/1.5 "SFMono-Regular",Consolas,monospace;color:#cdd3e0}
 .op-card{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:14px}
 .op-card h4{font-size:13.5px;margin-bottom:10px}
