@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pigsty Admin · 运维控制台</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="logo">🐷</span>
+      <div>
+        <h1>Pigsty Admin</h1>
+        <p class="sub">常用运维操作 Web 控制台</p>
+      </div>
+    </div>
+    <div class="env" id="env"></div>
+  </header>
+
+  <main class="layout">
+    <!-- 只读状态 -->
+    <section class="panel">
+      <h2>📊 状态查看 <span class="hint">（只读）</span></h2>
+      <div class="status-grid" id="statusGrid"></div>
+      <div class="output-wrap">
+        <pre id="statusOutput" class="output">点击上方按钮查看...</pre>
+      </div>
+    </section>
+
+    <!-- 危险操作 -->
+    <section class="panel">
+      <h2>🛠 运维操作 <span class="hint" id="dangerHint"></span></h2>
+      <div class="ops-grid" id="opsGrid"></div>
+      <div class="output-wrap">
+        <pre id="opOutput" class="output">执行结果将显示在此...</pre>
+      </div>
+    </section>
+
+    <!-- 操作日志 -->
+    <section class="panel">
+      <h2>📜 操作日志</h2>
+      <button class="btn ghost" id="refreshLog">刷新日志</button>
+      <table class="log-table" id="logTable">
+        <thead><tr><th>时间</th><th>类型</th><th>命令</th><th>结果</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </section>
+  </main>
+
+  <!-- 确认弹窗 -->
+  <div class="modal" id="modal" hidden>
+    <div class="modal-card">
+      <h3>⚠️ 危险操作确认</h3>
+      <p id="modalDesc"></p>
+      <div class="modal-actions">
+        <button class="btn danger" id="modalConfirm">确认执行</button>
+        <button class="btn ghost" id="modalCancel">取消</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/app.js"></script>
+</body>
+</html>

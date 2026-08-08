@@ -1,0 +1,43 @@
+:root{
+  --bg:#0f1117; --panel:#1a1d27; --panel2:#232733; --border:#2c3140;
+  --text:#e6e8ee; --muted:#8b90a0; --accent:#4f8cff; --accent2:#2dd4bf;
+  --danger:#ff5c5c; --ok:#3ddc84; --warn:#ffb454;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font:14px/1.5 -apple-system,"Segoe UI",Roboto,"PingFang SC","Microsoft YaHei",sans-serif}
+.topbar{display:flex;justify-content:space-between;align-items:center;padding:16px 24px;background:var(--panel);border-bottom:1px solid var(--border)}
+.brand{display:flex;align-items:center;gap:14px}
+.logo{font-size:34px}
+.topbar h1{font-size:20px}
+.sub{color:var(--muted);font-size:12px}
+.env{font-size:12px;color:var(--muted);text-align:right;line-height:1.7}
+.layout{max-width:1100px;margin:0 auto;padding:24px;display:flex;flex-direction:column;gap:24px}
+.panel{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:20px}
+.panel h2{font-size:16px;margin-bottom:14px;display:flex;align-items:center;gap:8px}
+.hint{color:var(--muted);font-size:12px;font-weight:400}
+.status-grid,.ops-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px;margin-bottom:14px}
+.btn{background:var(--panel2);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:10px 12px;cursor:pointer;font-size:13px;text-align:left;transition:.15s}
+.btn:hover{border-color:var(--accent);transform:translateY(-1px)}
+.btn:disabled{opacity:.45;cursor:not-allowed;transform:none}
+.btn.ghost{background:transparent}
+.btn.danger{background:var(--danger);border-color:var(--danger);color:#fff;font-weight:600;text-align:center}
+.btn.running{opacity:.6;cursor:progress}
+.output-wrap{margin-top:6px}
+.output{background:#0a0c12;border:1px solid var(--border);border-radius:8px;padding:14px;min-height:120px;max-height:420px;overflow:auto;white-space:pre-wrap;font:12.5px/1.55 "SFMono-Regular",Consolas,monospace;color:#cdd3e0}
+.log-table{width:100%;border-collapse:collapse;margin-top:10px;font-size:12.5px}
+.log-table th,.log-table td{border-bottom:1px solid var(--border);padding:8px 10px;text-align:left;vertical-align:top}
+.log-table th{color:var(--muted);font-weight:500}
+.badge{display:inline-block;padding:2px 8px;border-radius:6px;font-size:11px;font-weight:600}
+.badge.ok{background:rgba(61,220,132,.15);color:var(--ok)}
+.badge.fail{background:rgba(255,92,92,.15);color:var(--danger)}
+.badge.status{background:rgba(79,140,255,.15);color:var(--accent)}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;z-index:50}
+.modal-card{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:24px;max-width:480px;width:90%}
+.modal-card h3{color:var(--danger);margin-bottom:12px}
+.modal-card p{color:var(--muted);margin-bottom:18px;white-space:pre-wrap;word-break:break-all}
+.modal-actions{display:flex;gap:10px;justify-content:flex-end}
+.field{display:flex;flex-direction:column;gap:4px;margin-bottom:10px}
+.field label{font-size:12px;color:var(--muted)}
+.field input{background:#0a0c12;border:1px solid var(--border);border-radius:6px;padding:8px;color:var(--text);font-size:13px}
+.op-card{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:14px}
+.op-card h4{font-size:13.5px;margin-bottom:10px}

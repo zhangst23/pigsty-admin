@@ -362,3 +362,24 @@ Grafana / Prometheus 默认 `admin` / `pigsty`，可在 `pigsty.yml` 的 `grafan
 ---
 
 > 更多细节参见官方文档：https://pigsty.io/docs ｜ 演示环境：https://demo.pigsty.io
+
+---
+
+## 11. 运维 Web 控制台（`admin/`）
+
+`admin/` 目录内置一个**零依赖**的运维 Web 控制台，把常用运维操作（节点/集群/用户/库/扩展的增删，
+以及集群/备份/库存的状态查看）封装成网页界面，方便日常巡检与操作。
+
+```bash
+cd /root/pigsty/admin
+
+# 只读模式（仅查看状态）
+python3 app.py
+
+# 启用危险操作（创建/删除等需要页面二次确认）
+ADMIN_DANGER=1 python3 app.py
+```
+
+启动后浏览器访问 `http://127.0.0.1:8080`。详细用法见 [admin/README.md](admin/README.md)。
+
+> ⚠️ 危险操作默认禁用，仅 `ADMIN_DANGER=1` 启动后可用，且每次执行需页面二次确认。
