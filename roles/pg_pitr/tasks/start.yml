@@ -1,0 +1,109 @@
+---
+#--------------------------------------------------------------#
+# Launch patroni primary                               [primary]
+#--------------------------------------------------------------#
+- name: launch patroni primary
+  tags: primary
+  any_errors_fatal: true
+  when: pg_role == 'primary'
+  block:
+
+    - name: shutdown postgres primary manually
+      ignore_errors: true
+      become_user: "{{ pg_dbsu }}"
+      shell: |
+        rm -rf "{{ pg_data }}/patroni.dynamic.json"
+        "{{ pg_bin_dir }}/pg_ctl" stop -D "{{ pg_data }}" || /bin/true
+      args: { executable: /bin/bash }
+
+    - name: launch patroni primary
+      systemd: name=patroni state=restarted enabled=yes daemon_reload=yes
+
+    - name: wait for patroni primary
+      wait_for: host={{ inventory_hostname }} port={{ patroni_port }} state=started timeout=60
+
+    - name: check postgres primary ready
+      become_user: "{{ pg_dbsu }}"
+      shell: |
+        {{ pg_bin_dir }}/pg_isready -t 5 -p {{ pg_port }}
+      register: result
+      retries: 12
+      until: result.rc == 0
+      delay: 5
+
+
+
+#--------------------------------------------------------------#
+# Resume Patroni HA                                     [resume]
+#--------------------------------------------------------------#
+- name: resume patroni ha
+  become_user: "{{ pg_dbsu }}"
+  tags: [ up, resume ]
+  ignore_errors: true
+  shell: |
+    {% if pg_mode|default('pgsql') == 'citus' %} 
+    OUTPUT=$(/usr/bin/patronictl -c /etc/patroni/patroni.yml resume {{ pg_shard }} --group {{ pg_group }} 2>&1)
+    RET=$?
+    {% else %}
+    OUTPUT=$(/usr/bin/patronictl -c /etc/patroni/patroni.yml resume {{ pg_cluster }} 2>&1)
+    RET=$?
+    {% endif %}
+    if [ $RET -eq 0 ]; then
+        echo "Patroni resume successfully."
+        exit 0
+    else
+        if echo "$OUTPUT" | grep -qi 'is not paused'; then
+            echo "Patroni already resumed"
+            exit 0
+        else
+            echo "Failed to resume patroni $RET, please check the logs."
+            echo "$OUTPUT"
+            exit 1
+        fi
+    fi
+
+
+
+#--------------------------------------------------------------#
+# Launch patroni replica                               [replica]
+#--------------------------------------------------------------#
+- name: launch patroni replicas
+  tags: replica
+  any_errors_fatal: true
+  when: pg_role != 'primary'
+  throttle: 1
+  block:
+
+    - name: shutdown postgres replica manually
+      ignore_errors: true
+      become_user: "{{ pg_dbsu }}"
+      shell: |
+        rm -rf "{{ pg_data }}/patroni.dynamic.json"
+        "{{ pg_bin_dir }}/pg_ctl" stop -D "{{ pg_data }}" || /bin/true
+      args: { executable: /bin/bash }
+
+    - name: disable clonefrom before launching patroni replica
+      tags: clonefrom
+      replace:
+        path: /etc/patroni/patroni.yml
+        regexp: 'clonefrom:\s*true'
+        replace: 'clonefrom: false'
+
+    - name: launch patroni replica
+      systemd: name=patroni state=restarted enabled=yes daemon_reload=yes
+
+    - name: wait for patroni replica
+      wait_for: host={{ inventory_hostname }} port={{ patroni_port }} state=started timeout=30
+
+    - name: wait for postgres replica
+      wait_for: host={{ inventory_hostname }} port={{ pg_port }} state=started timeout=86400
+
+    - name: check postgres replica ready
+      become_user: "{{ pg_dbsu }}"
+      shell: |
+        {{ pg_bin_dir }}/pg_isready -t 5 -p {{ pg_port }}
+      register: result
+      retries: 6
+      until: result.rc == 0
+      delay: 5
+...

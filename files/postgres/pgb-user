@@ -1,0 +1,102 @@
+#!/bin/bash
+set -uo pipefail
+#==============================================================#
+# File      :   pgb-user
+# Desc      :   add user to pgbouncer pool
+# Ctime     :   2021-03-29
+# Mtime     :   2025-01-20
+# Path      :   /pg/bin/pgb-user
+# Deps      :   psql, sed
+# License   :   Apache-2.0 @ https://pigsty.io/docs/about/license/
+# Copyright :   2018-2026  Ruohang Feng / Vonng (rh@vonng.com)
+#==============================================================#
+PROG_NAME="$(basename $0)"
+PROG_DIR="$(cd $(dirname $0) && pwd)"
+
+PATH=/usr/pgsql/bin:/usr/local/bin:/usr/local/sbin:/usr/bin:/usr/sbin:/bin:/sbin:$PATH
+#--------------------------------------------------------------#
+# use AUTO or "" as password will fetch from database
+# use NULL as password will set empty password ""
+# enc method will be fetched from password_encryption parameter
+# md5 passwords will be calc by pg md5 salt algorithm
+# scram pwd cannot be calculated, use plain-text instead
+#--------------------------------------------------------------#
+
+
+#--------------------------------------------------------------#
+# Test Cases
+# pgb-user dbp_vonng
+# pgb-user dbp_vonng auto
+# pgb-user dbp_vonngNE auto  # Not Exist Error
+# pgb-user dbp_vonng null
+# pgb-user dbp_vonng md596bceae83ba2937778af09adf00ae738
+# pgb-user dbp_vonng md596bceae83ba29377
+# pgb-user dbp_vonng Test.Password
+#--------------------------------------------------------------#
+
+
+#--------------------------------------------------------------#
+# Name: pgbouncer_create_user
+# Desc: Add or modify pgbouncer userlist
+# Arg1: username (required)
+# Arg2: password (optional)
+# Note: Run this as dbsu (postgres)
+#--------------------------------------------------------------#
+function pgbouncer_create_user() {
+    local username=$1
+    local password=${2-''}
+    local userlist=${3-'/etc/pgbouncer/userlist.txt'}
+    local entry="\"${username}\" \"\""   # "username" ""
+    mkdir -p /etc/pgbouncer/
+    touch ${userlist}
+
+    case ${password} in
+    NULL | null) # force empty password
+        entry="\"${username}\" \"\""     # "username" ""
+        echo "use nil md5pwd: ${entry}"
+        ;;
+    AUTO | auto | "") # fetch db password
+        entry=$(psql -AXtwq -U postgres -d postgres -c "SELECT concat('\"', rolname, '\" \"', rolpassword, '\"') FROM pg_authid WHERE rolname = '${username}'")
+        if [[ ! -z ${entry} ]]; then
+            echo "password fetched via postgres: ${entry}"
+        else
+            echo "password fetching failed for ${username} ${password}"
+            exit 1
+        fi
+        ;;
+    *)
+        pwdenc=$(psql -AXtwq -U postgres -d postgres -c "SHOW password_encryption;" 2>/dev/null)
+        case $pwdenc in
+        md5)
+            if [[ ${password} == md5* ]] && [[ ${#password} == 35 ]]; then # just use the md5password
+                entry="\"${username}\" \"${password}\""
+                echo "md5pwd given: ${entry}"
+            else
+                local md5_mon_pass="md5$(echo -n "${password}${username}" | md5sum | awk '{print $1}')"
+                entry="\"${username}\" \"${md5_mon_pass}\""
+                echo "md5pwd calculated: ${entry}"
+            fi
+            ;;
+        scram-sha-256)
+            entry="\"${username}\" \"${password}\""
+            echo "SCRAM pwd cannot be calculated, use AUTO to fetch from postgres"
+            ;;
+        esac
+        ;;
+    esac
+
+    # if username already exists
+    if grep -q ${username} ${userlist}; then
+        sed -i "/^\"${username}\"[[:blank:]]*.*$/d" ${userlist}
+    fi
+    # write the "username" "password" to userlist
+    echo "${entry}" >> ${userlist};
+    cat ${userlist} | sort -r | uniq > "${userlist}e";
+    mv -f "${userlist}e" "${userlist}"
+}
+
+
+#--------------------------------------------------------------#
+#                             Main                             #
+#--------------------------------------------------------------#
+pgbouncer_create_user $@

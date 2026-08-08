@@ -1,0 +1,150 @@
+---
+#--------------------------------------------------------------#
+# Install node repo (public or local)                [node_repo]
+#--------------------------------------------------------------#
+- name: setup node repo
+  tags: [node_repo, node_install]
+  block:
+
+    # remove existing repos to /etc/yum.repos.d/backup
+    - name: remove and backup existing repo file
+      tags: node_repo_remove
+      when: node_repo_remove|bool
+      shell: |
+        {% if os_package == 'rpm' %}
+        mkdir -p /etc/yum.repos.d/backup;
+        mv -f /etc/yum.repos.d/*.repo /etc/yum.repos.d/backup/
+        {% elif os_package == 'deb' %}
+        mkdir -p /etc/apt/backup;
+        mv -f /etc/apt/sources.list.d/* /etc/apt/backup/ 2> /dev/null || /bin/true
+        mv -f /etc/apt/sources.list     /etc/apt/backup/ 2> /dev/null || /bin/true
+        {% endif %}
+        /bin/true
+      args: { executable: /bin/bash }
+
+    - name: add upstream repo file to nodes
+      tags: [ node_repo_upstream, node_repo_add ]
+      copy:
+        dest: "{{ upstream_dir }}/{{ upstream_file }}"
+        content: |
+          #=========# [{{ module_name }}] on {{ os_vendor }}{{ os_version }}  {{ os_arch }}: {{ os_codename }} {{ os_package }} repo
+          {% if repo_upstream is not defined %}
+          {% set repo_upstream = repo_upstream_default|default([]) %}
+          # this upstream repo is generated from pigsty role default configuration  
+          {% else %}
+          # this upstream repo is generated from pigsty user defined configuration
+          {% endif %}
+          
+          {% for repo in repo_upstream %}
+          {% if os_version|int in repo.releases and repo.module == module_name and os_arch in repo.arch %}
+          {% if os_package == 'rpm' %}
+          {% set target_version = '$releasever' %}
+          {% if (os_version|int >= 10) and (repo.name | lower | regex_search('^epel')) %}{% set target_version = os_version|string ~ 'z' %}{% endif %}
+          {% if (repo.name | lower | regex_search('^pgdg')) and ((os_version|int >= 10) or ((os_version|int == 9) and (os_version_full|string | regex_search('^9\\.([6-9]|[1-9][0-9]+)(\\..*)?$')))) %}{% set target_version = os_version_full|string | regex_replace('^(9\\.([6-9]|[1-9][0-9]+)).*$', '\\1') %}{% endif %}
+          {% if repo.minor is defined and repo.minor|bool %}{% set target_version = os_version_full|string %}{% endif %}
+          [{{ repo.name }}]
+          name = {{ repo.description }} $releasever - $basearch
+          {% if region in repo.baseurl and repo.baseurl[region] != '' %}
+          baseurl = {{ repo.baseurl[region] | replace('${admin_ip}', admin_ip) | replace('$releasever', target_version|string) }}
+          {% else %}
+          baseurl = {{ repo.baseurl.default | replace('${admin_ip}', admin_ip) | replace('$releasever', target_version|string) }}
+          {% endif %}
+          {% set repo_opts = {'gpgcheck': 0, 'enabled': 1} %}
+          {% if os_version|int >= 8 %}{% set repo_opts = repo_opts | combine({'module_hotfixes': 1}) %}{% endif %}
+          {% if repo.meta is defined %}{% set repo_opts = repo_opts | combine(repo.meta) %}{% endif %}
+          {% for key, value in repo_opts.items() %}
+          {{ key }} = {{ value }}
+          {% endfor %}
+          {% elif os_package == 'deb' %}
+          {% if region in repo.baseurl and repo.baseurl[region] != '' %}
+          # [module_name] [{{ os_codename }}:{{ os_version }}] {{ repo.name }}: {{ repo.description }}
+          deb [trusted=yes] {{ repo.baseurl[region] | replace('${admin_ip}', admin_ip)  | replace('${distro_codename}', os_codename) | replace('${distro_name}', os_vendor) }} 
+          {% else %}
+          deb [trusted=yes] {{ repo.baseurl.default | replace('${admin_ip}', admin_ip)  | replace('${distro_codename}', os_codename) | replace('${distro_name}', os_vendor)  }}
+          {% endif %}
+          {% endif %}
+          
+          {% endif %}
+          {% endfor %}
+      vars:
+        upstream_dir: "{% if os_package == 'rpm' %}/etc/yum.repos.d{% else %}/etc/apt/sources.list.d{% endif %}"
+        upstream_file: "{% if os_package == 'rpm' %}{{ item }}.repo{% else %}{{ item }}.list{% endif %}"
+        module_name: "{{ item }}"
+      with_items: "{{ node_repo_modules.split(',') }}"
+
+    - name: make node local repo cache
+      tags: node_repo_cache
+      shell: |
+        {% if os_package == 'rpm' %}
+        yum makecache;    
+        {% elif os_package == 'deb' %}
+        apt update
+        {% endif %}
+      args: { executable: /bin/bash }
+
+#--------------------------------------------------------------#
+# Install packages                                    [node_pkg]
+#--------------------------------------------------------------#
+- name: install node packages
+  tags: node_pkg
+  block:
+
+    - name: suppress deb auto start with policy-rc.d
+      copy: src=policy-rc.d dest=/usr/sbin/policy-rc.d mode=0755
+      when: os_package == 'deb'
+
+    - name: install default node packages
+      tags: node_pkg_default
+      environment: "{{ proxy_env | default({}) }}"
+      package: name={{ item }} state=present
+      with_items: "{{ node_default_packages | default(node_packages_default) | default([]) }}"
+
+    - name: install node packages (latest)
+      tags: [node_pkg_extra, node_install]
+      environment: "{{ proxy_env | default({}) }}"
+      package: name={{ item }} state=latest
+      with_items: "{{ node_packages }}"
+
+    - name: install keepalived if enabled
+      tags: node_vip
+      when: vip_enabled|bool
+      environment: "{{ proxy_env | default({}) }}"
+      package: name={{ item }}
+      with_items:
+        - keepalived
+        - "{% if os_package|default('rpm') == 'deb' %}keepalived-exporter{% else %}keepalived_exporter{% endif %}"
+        # - "{% if os_package|default('rpm') == 'deb' %}iproute2{% else %}iproute{% endif %}"  # required for vip_interface/pg_vip_interface=auto when node packages are skipped
+
+#--------------------------------------------------------------#
+# UV Python Package Manager                             [node_uv]
+#--------------------------------------------------------------#
+- name: setup uv python package manager
+  tags: node_uv
+  when: node_uv_env is defined and node_uv_env != ''
+  block:
+
+    - name: create uv directories
+      file: path={{ item }} state=directory mode=0755
+      with_items: [/etc/uv]
+
+    - name: render uv config for china region
+      when: region is defined and region == 'china'
+      copy:
+        dest: /etc/uv/uv.toml
+        mode: '0644'
+        content: |
+          [[index]]
+          url = "https://mirrors.aliyun.com/pypi/simple/"
+          default = true
+
+    - name: setup uv venv and install packages
+      ignore_errors: true
+      environment: "{{ proxy_env | default({}) }}"
+      shell: |
+        [ -f {{ node_uv_env }}/bin/python ] || uv venv {{ node_uv_env }};
+        {% if node_pip_packages is defined and node_pip_packages != '' %}
+        uv pip install --python {{ node_uv_env }}/bin/python {{ node_pip_packages }};
+        {% endif %}
+      args: { executable: /bin/bash}
+
+...

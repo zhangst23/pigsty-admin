@@ -1,0 +1,84 @@
+#!/bin/bash
+set -euo pipefail
+#==============================================================#
+# File      :   pg-backup
+# Desc      :   make physical backup with pgbackrest
+# Ctime     :   2022-12-29
+# Mtime     :   2026-01-18
+# Path      :   /pg/bin/pg-backup
+# Deps      :   pgbackrest, pg-role
+# License   :   Apache-2.0 @ https://pigsty.io/docs/about/license/
+# Copyright :   2018-2026  Ruohang Feng / Vonng (rh@vonng.com)
+#==============================================================#
+PROG_NAME="$(basename $0)"
+PROG_DIR="$(cd $(dirname $0) && pwd)"
+
+
+#--------------------------------------------------------------#
+# Usage
+#--------------------------------------------------------------#
+# pg-backup [full|diff|incr]
+#
+# run this script with dbsu, only primary instance will continue
+# FYI: https://pgbackrest.org/user-guide-rhel.html#concept/backup
+#
+# example:
+#   pg-backup       # make a backup, incr, or full backup if necessary
+#   pg-backup full  # make a full backup
+#   pg-backup diff  # make a differential backup
+#   pg-backup incr  # make a incremental backup
+#
+#--------------------------------------------------------------#
+
+
+#--------------------------------------------------------------#
+# Param
+#--------------------------------------------------------------#
+BACKUP_MODE=${1-''}
+
+CURRENT_ROLE=$(/pg/bin/pg-role)
+if [[ "${CURRENT_ROLE}" != "primary" ]]; then
+    echo "[FAIL] this script should run on pgsql primary instance, got ${CURRENT_ROLE}"
+    echo "This may not be a problem since this script is designed to fail fast on replica instance to avoid backup conflicts."
+    exit 1
+else
+    echo "[INFO] run on primary instance"
+fi # this script only runs on primary instance
+
+if ! id -nG | grep -qw postgres; then
+    echo "[FAIL] run this as dbsu (postgres group member)"
+    exit 2
+fi
+
+BACKUP_TYPE=''
+if [[ "${BACKUP_MODE}" == "incr" || "${BACKUP_MODE}" == "full" || "${BACKUP_MODE}" == "diff" ]]; then
+    BACKUP_TYPE="--type=${BACKUP_MODE}"
+elif [[ "${BACKUP_MODE}" == "" ]]; then
+    BACKUP_TYPE="--type=incr"
+else
+    echo "[FAIL] invalid backup mode: ${BACKUP_MODE}"
+    exit 3
+fi
+
+# Get stanza name from pgbackrest config
+STANZA=$(grep -o '\[[^][]*]' /etc/pgbackrest/pgbackrest.conf | grep -v '^\[global' | head -n1 | sed 's/.*\[\([^]]*\)].*/\1/')
+if [[ -z "${STANZA}" ]]; then
+    echo "[FAIL] could not determine stanza from pgbackrest configuration"
+    exit 4
+fi
+
+echo "[BEGIN] pgbackrest ========================"
+echo "[BEGIN] pgbackrest ${BACKUP_TYPE} for ${STANZA} begin at $(date '+%Y-%m-%d %H:%M:%S')"
+echo "$ /usr/bin/pgbackrest" --stanza="${STANZA}" "${BACKUP_TYPE}" backup
+
+
+/usr/bin/pgbackrest --stanza="${STANZA}" "${BACKUP_TYPE}" backup
+BACKUP_STATUS=$?
+
+if [[ ${BACKUP_STATUS} -eq 0 ]]; then
+    echo "[DONE] pgbackrest ${BACKUP_TYPE} backup for ${STANZA} completed at $(date '+%Y-%m-%d %H:%M:%S')"
+else
+    echo "[FAIL] pgbackrest ${BACKUP_TYPE} backup for ${STANZA} failed with status ${BACKUP_STATUS} at $(date '+%Y-%m-%d %H:%M:%S')"
+fi
+
+exit ${BACKUP_STATUS}

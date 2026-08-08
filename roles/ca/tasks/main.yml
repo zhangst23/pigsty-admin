@@ -1,0 +1,101 @@
+---
+#--------------------------------------------------------------#
+# Create CA Dir                                         [ca_dir]
+#--------------------------------------------------------------#
+# This is created by default on all EL releases
+- name: create ca directory on local files/pki/ca
+  tags: ca_dir
+  become: false
+  connection: local
+  vars:
+    ansible_python_interpreter: "{{ ansible_playbook_python }}"
+  file: path={{ item.path }} state=directory mode={{ item.mode }}
+  with_items:
+    - { path: files/pki,       mode: '0755' }
+    - { path: files/pki/ca,    mode: '0700' }  # CA private key directory, restricted access
+    - { path: files/pki/csr,   mode: '0755' }
+    - { path: files/pki/misc,  mode: '0755' }
+    - { path: files/pki/etcd,  mode: '0755' }
+    - { path: files/pki/nginx, mode: '0755' }
+    - { path: files/pki/infra, mode: '0755' }
+    - { path: files/pki/pgsql, mode: '0755' }
+    - { path: files/pki/minio, mode: '0755' }
+    - { path: files/pki/mongo, mode: '0755' }
+    - { path: files/pki/mysql, mode: '0755' }
+
+#--------------------------------------------------------------#
+# Create or Reuse CA Private Key                    [ca_private]
+#--------------------------------------------------------------#
+# make sure ca private key exists, or abort
+- name: create ca private key
+  tags: ca_private
+  become: false
+  connection: local
+  vars:
+    ansible_python_interpreter: "{{ ansible_playbook_python }}"
+  block:
+
+    # check ca private key file exists @ files/pki/ca.key
+    - name: check files/pki/ca/ca.key exists
+      stat: path=files/pki/ca/ca.key
+      register: ca_key_exists
+
+    # abort becomes user does not provide their ca key & certs
+    - name: ABORT if ca key not exists
+      when: not ca_key_exists.stat.exists and not ca_create|bool
+      any_errors_fatal: true
+      ignore_errors: false
+      fail:
+        msg: 'Abort because `ca_create` is set to false, but local ca key cert not exists.'
+
+    # generate ca private key on /etc/pki/ when ca_create is true
+    - name: generate ca private key
+      when: not ca_key_exists.stat.exists and ca_create|bool
+      openssl_privatekey: path=files/pki/ca/ca.key mode=0600
+
+#--------------------------------------------------------------#
+# Issue CA Cert                                        [ca_cert]
+#--------------------------------------------------------------#
+# self-signing a ca cert if not exists
+- name: self-signing ca cert
+  tags: ca_cert
+  become: false
+  connection: local
+  vars:
+    ansible_python_interpreter: "{{ ansible_playbook_python }}"
+  block:
+
+    # check ca public cert file exists @ files/pki/ca.crt
+    - name: check files/pki/ca/ca.crt exists
+      stat: path=files/pki/ca/ca.crt
+      register: ca_crt_exists
+
+    # generate ca self-signing request
+    - name: generate ca signing request
+      when: not ca_crt_exists.stat.exists
+      openssl_csr:
+        path: files/pki/csr/ca.csr
+        privatekey_path: files/pki/ca/ca.key
+        common_name: "{{ ca_cn }}"
+        organization_name: pigsty
+        organizational_unit_name: ca
+        basic_constraints:
+          - CA:TRUE
+          - pathlen:1
+        basic_constraints_critical: yes
+        key_usage: [ keyCertSign, cRLSign, digitalSignature ]
+        #key_usage_critical: true
+        #use_common_name_for_san: false
+
+    # approve csr and get self-signed ca cert
+    - name: generate self-signed ca.crt
+      when: not ca_crt_exists.stat.exists
+      openssl_certificate:
+        path: files/pki/ca/ca.crt
+        csr_path: files/pki/csr/ca.csr
+        privatekey_path: files/pki/ca/ca.key
+        provider: selfsigned
+        selfsigned_not_after: +36500d
+        mode: 0644
+
+...

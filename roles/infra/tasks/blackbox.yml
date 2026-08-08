@@ -1,0 +1,33 @@
+---
+#--------------------------------------------------------------#
+# Config Blackbox Exporter                     [blackbox_config]
+#--------------------------------------------------------------#
+- name: config blackbox
+  tags: blackbox_config
+  template: src={{ item.src }} dest={{ item.dest }} owner={{ item.owner }} group={{ item.group|default(item.owner) }} mode={{ item.mode }}
+  with_items:
+    - { src: "prometheus/blackbox_exporter.svc" ,dest: "{{ systemd_dir }}/blackbox_exporter.service" ,owner: root       ,group: root  ,mode: "0644" }
+    - { src: "prometheus/blackbox.yml"          ,dest: "/etc/blackbox.yml"                           ,owner: prometheus ,group: infra ,mode: "0644" }
+    - { src: "prometheus/blackbox.env"          ,dest: "/etc/default/blackbox_exporter"              ,owner: prometheus ,group: infra ,mode: "0644" }
+
+- name: grant icmp socket permissions to blackbox_exporter
+  tags: blackbox_config
+  ignore_errors: true
+  shell: |
+    setcap cap_net_raw+ep /usr/bin/blackbox_exporter || /bin/true
+  args: { executable: /bin/bash }
+
+
+#--------------------------------------------------------------#
+# Launch Blackbox Exporter                     [blackbox_launch]
+#--------------------------------------------------------------#
+# launch blackbox on port 9115
+- name: launch blackbox
+  tags: blackbox_launch
+  when: blackbox_enabled|bool
+  block:
+    - name: launch blackbox systemd service
+      systemd: name=blackbox_exporter state=restarted enabled=yes daemon_reload=yes
+    - name: wait for blackbox service online
+      wait_for: host=127.0.0.1 port={{ blackbox_port|default(9115) }} state=started
+...

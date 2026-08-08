@@ -1,0 +1,12 @@
+---
+#--------------------------------------------------------------#
+# Register Postgres Datasource to Grafana  [add_ds][pg_register]
+#--------------------------------------------------------------#
+# iterate over pg_databases and register each to all infra nodes
+- include_tasks: register_grafana_db.yml
+  tags: [ pg_register, register, add_ds ]
+  loop: "{{ pg_databases|default([]) }}"
+  loop_control:
+    loop_var: database
+
+...

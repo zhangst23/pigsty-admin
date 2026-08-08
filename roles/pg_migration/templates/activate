@@ -1,0 +1,57 @@
+#!/bin/bash
+#==============================================================#
+# File      :   activate
+# Desc      :   Activate Migration Context Environment
+# Time      :   {{ '%Y-%m-%d %H:%M' |strftime }}
+# Path      :   {{ dir_path }}/activate
+# Deps      :   bash
+# License   :   Apache-2.0 @ https://pigsty.io/docs/about/license/
+# Copyright :   2018-2026  Ruohang Feng / Vonng (rh@vonng.com)
+#==============================================================#
+
+
+#--------------------------------------------------------------#
+# Utils
+#--------------------------------------------------------------#
+__CN='\033[0m';__CK='\033[0;30m';__CR='\033[0;31m';__CG='\033[0;32m';
+__CY='\033[0;33m';__CB='\033[0;34m';__CM='\033[0;35m';__CC='\033[0;36m';__CW='\033[0;37m';
+function log_info() {  printf "[${__CG} OK ${__CN}] ${__CG}%s${__CN}\n" "$*";   }
+function log_warn() {  printf "[${__CY}WARN${__CN}] ${__CY}%s${__CN}\n" "$*";   }
+function log_error() { printf "[${__CR}FAIL${__CN}] ${__CR}%s${__CN}\n" "$*";   }
+function log_debug() { printf "[${__CB}HINT${__CN}] ${__CB}%s${__CN}\n" "$*"; }
+function log_input() { printf "[${__CM} IN ${__CN}] ${__CM}%s\n=> ${__CN}" "$*"; }
+function log_hint()  { printf "${__CB}%s${__CN}\n" "$*"; }
+function log_line()  { printf "${__CM}[%s] ===========================================${__CN}\n" "$*"; }
+
+
+#--------------------------------------------------------------#
+# Param
+#--------------------------------------------------------------#
+export SRCCLS="{{ src_cls }}"
+export SRCDB="{{ src_db }}"
+export SRCIP="{{ src_ip }}"
+export SRCPG="{{ src_pg }}"
+export PUBNAME="{{ pub_name }}"
+export DSTCLS="{{ dst_cls }}"
+export DSTIP="{{ dst_ip }}"
+export DSTDB="{{ dst_db }}"
+export DSTPG="{{ dst_pg }}"
+export SUBNAME="{{ sub_name }}"
+export SUBCONN="{{ sub_conn }}"
+export DIRPATH=$(cd {{ dir_path }} && pwd)
+export MIGRATION_CONTEXT="${SRCCLS}.${SRCDB}"
+
+#--------------------------------------------------------------#
+# Print
+#--------------------------------------------------------------#
+log_info "activate migration context for ${SRCCLS}.${SRCDB}"
+log_info "  - SRC      :  ${SRCCLS}.${SRCDB} : ${SRCIP}"
+log_info "  - DST      :  ${DSTCLS}.${DSTDB} : ${DSTIP}"
+log_info "  - SRC URL  :  ${SRCPG}"
+log_info "  - DST URL  :  ${DSTPG}"
+log_info "  - PUB/SUB  :  ${PUBNAME} ---> ${SUBNAME}"
+log_info "  - SUBCONN  :  ${SUBCONN}"
+log_info "  - CONTEXT  :  ${DIRPATH}"
+log_info "  - MANUAL   :  ${DIRPATH}/README.md"
+
+cd "${DIRPATH}"

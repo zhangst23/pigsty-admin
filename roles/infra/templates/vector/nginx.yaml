@@ -1,0 +1,93 @@
+---
+# vector config for nginx access/error logs
+
+sources:
+  # Nginx access logs: /var/log/nginx/*.log (combined format)
+  nginx_access_raw:
+    type: file
+    read_from: {{ vector_read_from|default('beginning') }}
+    include:
+      - /var/log/nginx/*.log
+    ignore_not_found: true
+    glob_minimum_cooldown_ms: 10000
+
+  # Nginx error log: /var/log/nginx-error.log
+  nginx_error_raw:
+    type: file
+    read_from: {{ vector_read_from|default('beginning') }}
+    include:
+      - /var/log/nginx-error.log
+    ignore_not_found: true
+    glob_minimum_cooldown_ms: 10000
+
+transforms:
+  # Parse nginx access log (combined format)
+  nginx_access_logs:
+    type: remap
+    inputs: [nginx_access_raw]
+    drop_on_abort: false
+    source: |
+      .job = "nginx"
+      .ip = "{{ inventory_hostname }}"
+      .ins = "nginx-{{ infra_seq|default('1') }}"
+      .cls = "nginx"
+      .server = replace(replace(string(.file) ?? "default", "/var/log/nginx/", ""), ".log", "")
+      original = string!(.message)
+
+      parsed, err = parse_nginx_log(original, "combined")
+      if err == null {
+        ts, ts_err = parse_timestamp(parsed.timestamp, "%d/%b/%Y:%H:%M:%S %z")
+        if ts_err == null {
+          ._time = format_timestamp!(ts, "%Y-%m-%dT%H:%M:%S%.fZ")
+        } else {
+          ._time = format_timestamp!(.timestamp, "%Y-%m-%dT%H:%M:%S%.fZ")
+        }
+        .client = parsed.client
+        .user = parsed.user
+        .request = parsed.request
+        .status = to_string(parsed.status)
+        .size = to_string(parsed.size)
+        .referer = parsed.referer
+        .agent = parsed.agent
+        .level = "info"
+      } else {
+        ._time = format_timestamp!(.timestamp, "%Y-%m-%dT%H:%M:%S%.fZ")
+        .level = "unknown"
+      }
+      del(.source_type); del(.host); del(.file); del(.timestamp)
+
+  # Parse nginx error log
+  nginx_error_logs:
+    type: remap
+    inputs: [nginx_error_raw]
+    drop_on_abort: false
+    source: |
+      .job = "nginx"
+      .ip = "{{ inventory_hostname }}"
+      .ins = "nginx-{{ infra_seq|default('1') }}"
+      .cls = "nginx-error"
+      original = string!(.message)
+
+      # Try parsing with Vector's built-in nginx error format parser
+      parsed, err = parse_nginx_log(original, "error")
+      if err == null {
+        # Parse timestamp: format is "2025/01/03 16:41:26"
+        ts, ts_err = parse_timestamp(parsed.timestamp, "%Y/%m/%d %H:%M:%S")
+        if ts_err == null {
+          ._time = format_timestamp!(ts, "%Y-%m-%dT%H:%M:%S%.fZ")
+        } else {
+          ._time = format_timestamp!(.timestamp, "%Y-%m-%dT%H:%M:%S%.fZ")
+        }
+        .level = parsed.severity
+        .pid = to_string(parsed.pid)
+        .message = parsed.message
+        .client = parsed.client
+        .server = parsed.server
+        .request = parsed.request
+      } else {
+        # Fallback: use file timestamp + raw message
+        ._time = format_timestamp!(.timestamp, "%Y-%m-%dT%H:%M:%S%.fZ")
+        .level = "unknown"
+      }
+      del(.source_type); del(.host); del(.file); del(.timestamp)
+...

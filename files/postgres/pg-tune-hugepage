@@ -1,0 +1,182 @@
+#!/bin/bash
+set -euo pipefail
+#==============================================================#
+# File      :   pg-tune-hugepage
+# Desc      :   Tune system hugepages precisely for PostgreSQL
+# Ctime     :   2023-02-23
+# Mtime     :   2025-12-30
+# Path      :   /pg/bin/pg-tune-hugepage
+# Deps      :   psql
+# Note      :   Run as root, works on PostgreSQL 15+
+# License   :   Apache-2.0 @ https://pigsty.io/docs/about/license/
+# Copyright :   2018-2026  Ruohang Feng / Vonng (rh@vonng.com)
+#==============================================================#
+
+# Configuration variables
+PROG_NAME="$(basename "$0")"
+PROG_DIR="$(cd "$(dirname "$0")" && pwd)"
+SYSCTL_CONF="/etc/sysctl.d/hugepage.conf"
+DBSU="${1:-postgres}"
+SAFETY_MARGIN="${2:-0}"  # Additional hugepages as buffer (optional)
+
+#--------------------------------------------------------------#
+# Usage
+#--------------------------------------------------------------#
+function print_usage() {
+    cat <<EOF
+Usage: sudo $PROG_NAME [dbsu] [safety_margin]
+
+Optimizes hugepage allocation for PostgreSQL:
+  - Queries PostgreSQL for exact number of hugepages required
+  - Sets vm.nr_hugepages and vm.hugetlb_shm_group in $SYSCTL_CONF
+  - Applies settings immediately
+Example:
+  sudo $PROG_NAME postgres 5
+
+Parameters:
+  dbsu           PostgreSQL user (default: postgres)
+  safety_margin  Additional hugepages as buffer (default: 0)
+
+Requirements:
+  - PostgreSQL 15+ (for shared_memory_size_in_huge_pages parameter)
+  - Root privileges or sudo access
+  - Transparent Huge Pages (THP) should be disabled
+EOF
+}
+#--------------------------------------------------------------#
+# Permission Check
+#--------------------------------------------------------------#
+function can_sudo() {
+    local current_user
+    current_user=$(whoami)
+    if [[ "${current_user}" == "root" ]]; then
+        return 0
+    fi
+    if sudo -n true >/dev/null 2>&1; then
+        return 0
+    fi
+    return 1
+}
+
+#--------------------------------------------------------------#
+# Validation Functions
+#--------------------------------------------------------------#
+function validate_dbsu() {
+    if ! id "$1" &>/dev/null; then
+        echo "[ERROR] Database user '$1' does not exist"
+        exit 1
+    fi
+}
+
+function check_postgres_running() {
+    if ! sudo -iu "$1" psql -qwAXtc 'SELECT 1' &>/dev/null; then
+        echo "[ERROR] Cannot connect to PostgreSQL as user '$1'"
+        echo "        Make sure PostgreSQL is running and accessible"
+        exit 1
+    fi
+}
+
+#--------------------------------------------------------------#
+# Main
+#--------------------------------------------------------------#
+# Display help if requested
+if [[ "${1:-}" == "-h" ]] || [[ "${1:-}" == "--help" ]]; then
+    print_usage
+    exit 0
+fi
+
+# Check for root privileges
+if ! can_sudo; then
+    echo "[ERROR] Root privileges required to modify system hugepage settings"
+    echo "        Please run with sudo: sudo $PROG_NAME [dbsu] [safety_margin]"
+    exit 2
+fi
+
+# Validate database user
+validate_dbsu "$DBSU"
+check_postgres_running "$DBSU"
+
+# Retrieve number of hugepages required by PostgreSQL
+echo "[INFO] Querying PostgreSQL for hugepage requirements..."
+NR_HUGEPAGE=$(sudo -iu "${DBSU}" psql -qwAXtc 'SHOW shared_memory_size_in_huge_pages' 2>/dev/null || echo "-1")
+
+# Validate the retrieved value
+if [[ -z "$NR_HUGEPAGE" ]] || ! [[ "$NR_HUGEPAGE" =~ ^-?[0-9]+$ ]] || [[ "$NR_HUGEPAGE" -lt 0 ]]; then
+    echo "[ERROR] Failed to get valid hugepage count from PostgreSQL"
+    echo "        Make sure PostgreSQL 15+ is running and huge_pages is supported"
+    echo "        Current value: ${NR_HUGEPAGE:-<empty>}"
+    exit 1
+fi
+
+# Apply safety margin if specified
+if [[ -n "${SAFETY_MARGIN}" ]] && [[ "${SAFETY_MARGIN}" =~ ^[0-9]+$ ]]; then
+    ORIGINAL_COUNT="$NR_HUGEPAGE"
+    NR_HUGEPAGE=$((NR_HUGEPAGE + SAFETY_MARGIN))
+    echo "[INFO] Added safety margin of ${SAFETY_MARGIN} hugepages (${ORIGINAL_COUNT} → ${NR_HUGEPAGE})"
+fi
+
+# Get postgres group ID (group name is always 'postgres' in pigsty)
+DBSU_GID="$(getent group postgres | cut -d: -f3)"
+if [[ -z "$DBSU_GID" ]] || ! [[ "$DBSU_GID" =~ ^[0-9]+$ ]]; then
+    echo "[ERROR] Cannot find 'postgres' group or invalid GID: ${DBSU_GID:-<empty>}"
+    exit 1
+fi
+
+# Summary of settings to apply
+echo "[INFO] =================================="
+echo "PostgreSQL user: ${DBSU}"
+echo "PostgreSQL group ID: ${DBSU_GID}"
+echo "Required hugepages: ${NR_HUGEPAGE}"
+echo "Configuration file: ${SYSCTL_CONF}"
+
+# Display current hugepage settings
+echo "[BEFORE] ================================"
+echo "Current memory information:"
+grep -i huge /proc/meminfo || echo "No hugepage info found in /proc/meminfo"
+echo "Current sysctl settings:"
+sysctl -a 2>/dev/null | grep -E 'vm.nr_hugepages|vm.hugetlb_shm_group' || echo "No hugepage sysctl settings found"
+
+# Apply new settings
+echo "[EXECUTE] ==============================="
+cat > /tmp/hugepage.conf.new <<EOF
+# PostgreSQL hugepage configuration
+# Generated by ${PROG_NAME} on $(date)
+vm.nr_hugepages=${NR_HUGEPAGE}
+vm.hugetlb_shm_group=${DBSU_GID}
+EOF
+
+# Check if content would change before writing
+if [[ -f "$SYSCTL_CONF" ]] && diff -q "/tmp/hugepage.conf.new" "$SYSCTL_CONF" >/dev/null; then
+    echo "No changes needed, current settings are correct"
+else
+    echo "Writing new hugepage configuration..."
+    sudo mv /tmp/hugepage.conf.new "$SYSCTL_CONF"
+    echo "Applying new settings..."
+    sudo sysctl -p "${SYSCTL_CONF}"
+fi
+
+# Verify new settings
+echo "[AFTER] ================================="
+echo "Updated memory information:"
+grep -i huge /proc/meminfo || echo "No hugepage info found in /proc/meminfo"
+echo "Updated sysctl settings:"
+sysctl -a 2>/dev/null | grep -E 'vm.nr_hugepages|vm.hugetlb_shm_group' || echo "No hugepage sysctl settings found"
+
+# Check if settings were applied correctly
+ACTUAL_HUGEPAGES=$(sysctl -n vm.nr_hugepages 2>/dev/null || echo "unknown")
+if [[ "$ACTUAL_HUGEPAGES" != "$NR_HUGEPAGE" ]]; then
+    echo "[WARNING] Actual hugepage count ($ACTUAL_HUGEPAGES) differs from requested ($NR_HUGEPAGE)"
+    echo "          This might indicate kernel limitations or memory fragmentation"
+    echo "          Consider rebooting the system if this persists"
+else
+    echo "[INFO] Hugepage configuration applied successfully"
+fi # Print usage recommendation
+echo "[DONE] =================================="
+echo "PostgreSQL hugepage configuration complete."
+echo 
+echo "Consider adding the following to your inventory file:"
+echo "node_hugepage_count: ${NR_HUGEPAGE}"
+echo "node_sysctl_params: {vm.hugetlb_shm_group: ${DBSU_GID}}"
+echo
+echo "Note: For these settings to be fully effective after reboot,"
+echo "      ensure they are included in your system configuration."

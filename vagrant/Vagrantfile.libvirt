@@ -1,0 +1,97 @@
+
+# This is the Vagrantfile template for libvirt (KVM) which require vagrant-libvirt plugin to work
+# check https://vagrant-libvirt.github.io/vagrant-libvirt/ for details
+
+# read ssh key from current user's ~/.ssh
+ssh_prv_key = File.read(File.join(ENV['HOME'], '.ssh', 'id_rsa'))
+ssh_pub_key = File.readlines(File.join(ENV['HOME'], '.ssh', 'id_rsa.pub')).first.strip
+
+Vagrant.configure("2") do |config|
+    config.ssh.insert_key = false
+    config.vm.box_check_update = false
+    config.vm.synced_folder ".", "/vagrant", disabled: true
+    config.vm.provision "shell" do |s|
+      s.inline = <<-SHELL
+        if grep -sq "#{ssh_pub_key}" /home/vagrant/.ssh/authorized_keys; then
+          echo "SSH keys already provisioned." ; exit 0;
+        fi
+        echo "SSH key provisioning."
+        sshd=/home/vagrant/.ssh
+        mkdir -p ${sshd}; touch ${sshd}/{authorized_keys,config}
+        echo #{ssh_pub_key}   >> ${sshd}/authorized_keys
+        echo #{ssh_pub_key}   >  ${sshd}/id_rsa.pub      ; chmod 644 ${sshd}/id_rsa.pub
+        echo "#{ssh_prv_key}" >  ${sshd}/id_rsa          ; chmod 600 ${sshd}/id_rsa
+        if ! grep -q "StrictHostKeyChecking" ${sshd}/config; then
+            echo 'StrictHostKeyChecking=no' >> ${sshd}/config
+        fi
+        chown -R vagrant:vagrant /home/vagrant
+        exit 0
+      SHELL
+    end
+
+    Specs.each_with_index do |spec, index|
+        config.vm.define spec["name"] do |node|
+            node.vm.box = spec["image"]
+            node.vm.box_version = spec["box_version"] if spec["box_version"]
+            node.vm.network "private_network", ip: spec["ip"]
+            node.vm.hostname = spec["name"]
+            disk_size = spec["disk"] || 128
+            node.vm.provider "libvirt" do |v|
+                v.cpus   =  spec["cpu"]
+                v.memory =  spec["mem"]
+                if spec["name"].start_with?("minio")
+                    v.storage :file, :size => '32G', :device => 'vdb'
+                    v.storage :file, :size => '32G', :device => 'vdc'
+                    v.storage :file, :size => '32G', :device => 'vdd'
+                    v.storage :file, :size => '32G', :device => 'vde'
+                else
+                    v.storage :file, :size => "#{disk_size}G", :device => 'vdb'
+                end
+            end
+
+            if spec["name"].start_with?("minio")
+                node.vm.provision "shell" do |s|
+                  s.inline = <<-SHELL
+                    mkdir -p /data1 /data2 /data3 /data4;
+                    for dev in /dev/vdb /dev/vdc /dev/vdd /dev/vde; do
+                      if [ -b "${dev}" ] && ! blkid "${dev}" >/dev/null 2>&1; then
+                        if command -v mkfs.xfs >/dev/null 2>&1; then
+                          mkfs.xfs -f "${dev}"
+                        elif command -v mkfs.ext4 >/dev/null 2>&1; then
+                          mkfs.ext4 -F "${dev}"
+                        else
+                          echo "[WARN] mkfs.xfs and mkfs.ext4 not found, skip formatting ${dev}"
+                        fi
+                      fi
+                    done
+                    if blkid /dev/vdb >/dev/null 2>&1 && ! grep -q '/dev/vdb' /etc/fstab; then echo "/dev/vdb /data1 auto defaults,noatime,nodiratime 0 0" >> /etc/fstab; fi
+                    if blkid /dev/vdc >/dev/null 2>&1 && ! grep -q '/dev/vdc' /etc/fstab; then echo "/dev/vdc /data2 auto defaults,noatime,nodiratime 0 0" >> /etc/fstab; fi
+                    if blkid /dev/vdd >/dev/null 2>&1 && ! grep -q '/dev/vdd' /etc/fstab; then echo "/dev/vdd /data3 auto defaults,noatime,nodiratime 0 0" >> /etc/fstab; fi
+                    if blkid /dev/vde >/dev/null 2>&1 && ! grep -q '/dev/vde' /etc/fstab; then echo "/dev/vde /data4 auto defaults,noatime,nodiratime 0 0" >> /etc/fstab; fi
+                    mount -a || true
+                  SHELL
+                end
+            else
+                node.vm.provision "shell" do |s|
+                  s.inline = <<-SHELL
+                    if [ -b /dev/vdb ] && ! blkid /dev/vdb >/dev/null 2>&1; then
+                      if command -v mkfs.xfs >/dev/null 2>&1; then
+                        mkfs.xfs -f /dev/vdb
+                      elif command -v mkfs.ext4 >/dev/null 2>&1; then
+                        mkfs.ext4 -F /dev/vdb
+                      else
+                        echo "[WARN] mkfs.xfs and mkfs.ext4 not found, skip formatting /dev/vdb"
+                      fi
+                    fi
+                    mkdir -p /data
+                    if blkid /dev/vdb >/dev/null 2>&1 && ! grep -q '/dev/vdb' /etc/fstab; then
+                      echo "/dev/vdb /data auto defaults,noatime,nodiratime 0 0" >> /etc/fstab
+                    fi
+                    mount -a || true
+                  SHELL
+                end
+            end
+
+        end
+    end
+end

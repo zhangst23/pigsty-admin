@@ -1,0 +1,80 @@
+#!/bin/bash
+set -uo pipefail
+#==============================================================#
+# File      :   pgsql-db
+# Desc      :   Create database on postgres cluster
+# Ctime     :   2021-07-15
+# Mtime     :   2022-12-28
+# Path      :   bin/pgsql-db
+# Deps      :   ansible-playbook, pgsql-db.yml
+# License   :   Apache-2.0 @ https://pigsty.io/docs/about/license/
+# Copyright :   2018-2026  Ruohang Feng / Vonng (rh@vonng.com)
+#==============================================================#
+APP_NAME="$(basename $0)"
+APP_DIR="$(cd $(dirname $0) && pwd)"
+PIGSTY_HOME=$(cd $(dirname ${APP_DIR}) && pwd)
+
+
+#--------------------------------------------------------------#
+# Usage
+#--------------------------------------------------------------#
+# bin/pgsql-db <cluster> <dbname>  # define database in inventory first
+# `app.children.<cluster>.vars.pg_databases`, entry with name=<dbname>
+
+
+#--------------------------------------------------------------#
+# Utils
+#--------------------------------------------------------------#
+__CN='\033[0m';__CK='\033[0;30m';__CR='\033[0;31m';__CG='\033[0;32m';
+__CY='\033[0;33m';__CB='\033[0;34m';__CM='\033[0;35m';__CC='\033[0;36m';__CW='\033[0;37m';
+function log_info() {  printf "[${__CG} OK ${__CN}] ${__CG}$*${__CN}\n";   }
+function log_warn() {  printf "[${__CY}WARN${__CN}] ${__CY}$*${__CN}\n";   }
+function log_error() { printf "[${__CR}FAIL${__CN}] ${__CR}$*${__CN}\n";   }
+function log_debug() { printf "[${__CB}HINT${__CN}] ${__CB}$*${__CN}\n"; }
+function log_input() { printf "[${__CM} IN ${__CN}] ${__CM}$*\n=> ${__CN}"; }
+function log_hint()  { printf "${__CB}$*${__CN}\n"; }
+function log_line()  { printf "${__CM}[$*] ===========================================${__CN}\n"; }
+
+
+
+#--------------------------------------------------------------#
+# Param
+#--------------------------------------------------------------#
+PG_CLUSTER=${1-''}
+DBNAME=${2-''}
+
+if [[ -z "${PG_CLUSTER}" ]]; then
+    log_error "pg_cluster is empty"
+    log_hint "Usage:"
+    log_hint "    bin/pgsql-db <cls> <dbname>"
+    exit 1
+fi
+if [[ -z "${DBNAME}" ]]; then
+    log_error "dbname is empty"
+    log_hint "Usage:"
+    log_hint "    bin/pgsql-db <cls> <dbname>"
+
+    log_warn "don't forget to define database in  all.children.${PG_CLUSTER}.vars.pg_databases  first"
+    log_warn "if database have owner, make sure the user already exists, or create it with pg-user first"
+    exit 2
+fi
+
+
+#--------------------------------------------------------------#
+# Execute
+#--------------------------------------------------------------#
+log_line "EXECUTE"
+log_warn "create pgsql database '${DBNAME}' on '${PG_CLUSTER}'"
+log_hint "$ ./pgsql-db.yml -l ${PG_CLUSTER} -e dbname=${DBNAME}"
+
+"${PIGSTY_HOME}/pgsql-db.yml" -l "${PG_CLUSTER}" -e dbname="${DBNAME}"
+
+if [[ $? -ne 0 ]]; then
+  log_line "FAILURE"
+  log_error "fail to create pgsql database on '${PG_CLUSTER}'"
+  exit 3
+fi
+log_line "SUMMARY"
+log_info "create pgsql database ${DBNAME} on '${PG_CLUSTER}' complete"
+log_hint "check pgurl: postgres://${PG_CLUSTER}/${DBNAME}"
+exit 0

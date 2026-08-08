@@ -1,0 +1,33 @@
+---
+#-----------------------------------------------------------------
+# REDIS
+#-----------------------------------------------------------------
+# redis_cluster: redis-test       # name of this redis cluster @ cluster level
+# redis_node: 1                   # redis node identifier, integer sequence @ node level
+# redis_instances: {}             # redis instances definition of this redis node @ node level
+redis_fs_main: /data/redis        # main data directory for redis
+redis_exporter_enabled: true      # install redis exporter on redis nodes?
+redis_exporter_port: 9121         # default port for redis exporter
+redis_exporter_options: ''        # default cli args for redis exporter
+redis_mode: standalone            # standalone,cluster,sentinel
+redis_conf: redis.conf            # config template path (except sentinel)
+redis_bind_address: '0.0.0.0'     # bind address, empty string turns to inventory_hostname
+redis_max_memory: 1GB             # max memory used by each redis instance
+redis_mem_policy: allkeys-lru     # memory eviction policy
+redis_password: ''                # masterauth & requirepass password, disable by empty string
+redis_rdb_save: ['1200 1']        # redis rdb save directives, disable with empty list
+redis_aof_enabled: false          # redis aof enabled
+redis_rename_commands: {}         # rename dangerous commands
+redis_cluster_replicas: 1         # how many replicas for a master in redis cluster ?
+redis_sentinel_monitor: []        # sentinel master list, works on sentinel cluster only
+
+#-----------------------------------------------------------------
+# VECTOR (Reference)
+#-----------------------------------------------------------------
+vector_enabled: true              # enable vector log collector?
+vector_read_from: beginning       # vector read from beginning or end
+#-----------------------------------------------------------------
+# PROMETHEUS (Reference)
+#-----------------------------------------------------------------
+exporter_metrics_path: /metrics   # exporter metric path
+...

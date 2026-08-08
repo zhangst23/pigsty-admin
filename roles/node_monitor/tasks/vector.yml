@@ -1,0 +1,68 @@
+---
+#--------------------------------------------------------------#
+# Install Vector                                [vector_install]
+#--------------------------------------------------------------#
+- name: install vector
+  tags: [vector, vector_install]
+  block:
+    - name: install vector package
+      environment: "{{ proxy_env | default({}) }}"
+      package: name=vector state=present
+
+
+#--------------------------------------------------------------#
+# Cleanup Vector                                  [vector_clean]
+#--------------------------------------------------------------#
+- name: cleanup vector
+  tags: [vector, vector_clean]
+  when: vector_clean|bool
+  ignore_errors: true
+  block:
+    - name: stop vector service
+      systemd: name=vector state=stopped enabled=no daemon_reload=yes
+    - name: remove vector data
+      file: path="{{ item }}" state=absent
+      with_items:
+        - "{{ vector_data }}"
+        - "/etc/vector"
+
+#--------------------------------------------------------------#
+# Config Vector                                  [vector_config]
+#--------------------------------------------------------------#
+- name: config vector
+  tags: [vector, vector_config]
+  block:
+
+    - name: create vector data directories
+      file: path={{ item.path }} state={{ item.state }} mode='0700'
+      tags: vector_dir
+      with_items:
+        - { path: "/etc/vector"       ,state: directory }
+        - { path: "/etc/vector/examples" ,state: absent }
+        - { path: "{{ vector_data|default('/data/vector') }}" ,state: directory }
+
+    - name: create vector config files
+      template: src={{ item.src }} dest={{ item.dest }} owner={{ item.owner|default('root') }} mode={{ item.mode|default('0644') }}
+      with_items:
+        - { src: vector.svc  ,dest: "{{ systemd_dir }}/vector.service" }
+        - { src: vector.env  ,dest: /etc/default/vector }
+        - { src: vector.yaml ,dest: /etc/vector/vector.yaml }
+
+    - name: register node syslog to vector
+      tags: [ node_register, register ,add_logs ]
+      template: src=node.yaml dest=/etc/vector/node.yaml mode=0600
+
+
+#--------------------------------------------------------------#
+# Launch Vector                                  [vector_launch]
+#--------------------------------------------------------------#
+- name: launch vector
+  tags: [vector, vector_launch]
+  when: vector_enabled|bool
+  ignore_errors: true
+  block:
+    - name: restart vector systemd service
+      systemd: name=vector state=restarted enabled=yes daemon_reload=yes
+    - name: wait for vector service online
+      wait_for: host=127.0.0.1 port={{ vector_port }} state=started timeout=15
+...

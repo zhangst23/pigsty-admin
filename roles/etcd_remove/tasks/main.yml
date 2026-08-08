@@ -1,0 +1,94 @@
+---
+#--------------------------------------------------------------#
+# HONOR ETCD_SAFEGUARD                          [etcd_safeguard]
+#--------------------------------------------------------------#
+- name: ABORT due to etcd_safeguard enabled
+  connection: local
+  when: etcd_safeguard|bool
+  tags: [ always , etcd_safeguard ]
+  any_errors_fatal: true
+  ignore_errors: false
+  fail: msg="Abort due to etcd_safeguard for {{ etcd_cluster }}-{{ etcd_seq }} @ {{ inventory_hostname }} is enabled, override with -e etcd_safeguard=false"
+
+#--------------------------------------------------------------#
+# PAUSE FOR CONFIRMATION                            [etcd_pause]
+#--------------------------------------------------------------#
+# pause for 3 seconds to allow user to abort in case of fat finger
+- name: "pause for confirmation, Use Ctrl-C to ABORT"
+  tags: etcd_pause
+  pause: { seconds: 3 }
+
+#--------------------------------------------------------------#
+# remove etcd targets from victoria            [etcd_deregister]
+#--------------------------------------------------------------#
+- name: remove etcd from victoria targets
+  tags: [ etcd_deregister, deregister , rm_metrics ]
+  ignore_errors: true
+  delegate_to: '{{ item }}'
+  loop: '{{ groups["infra"]|default([]) }}'
+  file: path="/infra/targets/etcd/{{ etcd_cluster }}-{{ etcd_seq }}.yml" state=absent
+
+#--------------------------------------------------------------#
+# leave etcd cluster gracefully                     [etcd_leave]
+#--------------------------------------------------------------#
+- import_tasks: 'leave.yml'
+  ignore_errors: true
+  tags: etcd_leave
+  vars: { etcd_instance: "{{ etcd_cluster }}-{{ etcd_seq }}" }
+
+#--------------------------------------------------------------#
+# Remove etcd service                                 [etcd_svc]
+#--------------------------------------------------------------#
+- name: stop etcd cluster service
+  ignore_errors: true
+  tags: [etcd, etcd_svc, etcd_stop]
+  shell: |
+    systemctl disable etcd
+    systemctl stop etcd
+    
+    # try graceful shutdown first again
+    if ps -u etcd -o command | grep -q 'etcd' ; then
+        systemctl stop etcd
+    fi
+    
+    # kill if still exists
+    if ps -u etcd -o command | grep -q 'etcd' ; then
+        sleep 2
+        ps -u etcd -o pid:1,command | grep 'etcd' | awk '{print $1}' | xargs kill
+    fi
+    
+    # kill -9 if not killed 
+    if ps -u etcd -o command | grep -q 'etcd' ; then
+        sleep 5
+        ps -u etcd -o pid:1,command | grep 'etcd' | awk '{print $1}' | xargs kill -9
+    fi
+    # guaranteed success
+    exit 0
+  args: { executable: /bin/bash }
+
+#--------------------------------------------------------------#
+# Remove etcd data                                   [etcd_data]
+#--------------------------------------------------------------#
+- name: remove etcd data
+  tags: etcd_data
+  when: etcd_rm_data|bool
+  file: path={{ item }} state=absent
+  loop:
+    - "/etc/etcd"
+    - "/var/lib/etcd"
+    - "{{ etcd_data }}"
+    - "{{ systemd_dir }}/etcd.service"
+    - "/etc/profile.d/etcdctl.sh"
+    - "/etc/vector/etcd.yaml"
+    #- "/var/log/etcd.log" we just keep the logs for now
+
+#--------------------------------------------------------------#
+# Uninstall etcd packages                             [etcd_pkg]
+#--------------------------------------------------------------#
+- name: uninstall etcd package
+  tags: etcd_pkg
+  when: etcd_rm_pkg|bool
+  ignore_errors: true
+  package: name=etcd state=absent
+
+...

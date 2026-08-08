@@ -1,0 +1,800 @@
+#!/bin/bash
+#==============================================================#
+# File      :   bootstrap
+# Desc      :   setup local repo & install boot utils
+# Ctime     :   2022-10-16
+# Mtime     :   2026-06-26
+# Path      :   bootstrap
+# Docs      :   https://pigsty.io/docs/setup/offline
+# License   :   Apache-2.0 @ https://pigsty.io/docs/about/license/
+# Copyright :   2018-2026  Ruohang Feng / Vonng (rh@vonng.com)
+#==============================================================#
+PIGSTY_VERSION=v4.4.0
+
+
+#--------------------------------------------------------------#
+# Usage
+#--------------------------------------------------------------#
+#  boostrap [-r <region>] [-p <path>] [-k|--keep]
+#
+#  ./boostrap
+#     [-r|--region <region]   [default,china,europe]
+#     [-p|--path <path>]      specify another offline pkg path
+#     [-k|--keep]             keep existing upstream repo during bootstrap
+#--------------------------------------------------------------#
+# args
+#  -r  --region <region> : mirror region to use (default|china|europe)
+#  -p  --path   <path>   : offline packages path, /tmp/pkg.tgz by default
+#  -k  --keep            : keep upstream repo during bootstrap?
+#--------------------------------------------------------------#
+REGION=""               # which mirror to use? (default|china)
+REMOVE_REPO="yes"       # keep existing upstream repo file?
+PKG_PATH=/tmp/pkg.tgz   # which pkg to be used ? (/tmp/pkg.tgz by default)
+
+
+#--------------------------------------------------------------#
+# Logic
+#--------------------------------------------------------------#
+# This script make sure two things:
+#    1. ansible is installed
+#    2. local repo is prepared, if /tmp/pkg.tgz exists
+# It perform following tasks:
+# 1. check preconditions
+#
+# 2. check local repo exists ?
+#    Y -> Extract and use local offline pkg if exists
+#    N -> Internet access available ?
+#        |- [Y] -> add internet upstream repo (optional keeping existing repo)
+#        |- [N] -> always keep existing repo, and leave it to user to install
+#  after step 2, we have software repo available: Local > Internet > Existing
+
+# 3. install boot utils from available repo
+#     nginx,wget,sshpass,createrepo_c,yum-utils
+#     dnf-utils,modulemd-tools
+#     python3.12-jmespath (el8)
+#     python3-jmespath (el9)
+#
+# 4. Check ansible availability.
+#--------------------------------------------------------------#
+
+
+#--------------------------------------------------------------#
+# Utils
+#--------------------------------------------------------------#
+__CN='\033[0m';__CK='\033[0;30m';__CR='\033[0;31m';__CG='\033[0;32m';
+__CY='\033[0;33m';__CB='\033[0;34m';__CM='\033[0;35m';__CC='\033[0;36m';__CW='\033[0;37m';
+function log_info() {  printf "[${__CG} OK ${__CN}] ${__CG}$*${__CN}\n";   }
+function log_warn() {  printf "[${__CY}WARN${__CN}] ${__CY}$*${__CN}\n";   }
+function log_error() { printf "[${__CR}FAIL${__CN}] ${__CR}$*${__CN}\n";   }
+function log_debug() { printf "[${__CB}HINT${__CN}] ${__CB}$*${__CN}\n"; }
+function log_input() { printf "[${__CM} IN ${__CN}] ${__CM}$*\n=> ${__CN}"; }
+function log_hint()  { printf "${__CB}$*${__CN}"; }
+
+
+#--------------------------------------------------------------#
+# Param
+#--------------------------------------------------------------#
+PROG_NAME="$(basename $0)"
+PROG_DIR="$(cd $(dirname $0) && pwd)"
+PIGSTY_HOME="${PROG_DIR}"
+REPO_NAME=pigsty
+NGINX_HOME=/www
+REPO_DIR=${NGINX_HOME}/${REPO_NAME}
+BIN_DIR=${PIGSTY_HOME}/files/bin
+KERNEL=$(uname -s)
+
+# extract os vendor & version from /etc/os-release
+OS_VENDOR=""
+OS_VERSION=""
+OS_VERSION_FULL=""
+OS_PACKAGE=""
+OS_MANAGER=""
+OS_CODENAME=""
+ARCH=$(uname -m)
+
+
+#----------------------------------------------#
+# region
+#----------------------------------------------#
+# return 0 if behind gfw (inside mainland china), otherwise 1
+function behind_gfw() {
+    local return_code=$(curl -I -s --max-time 2 www.google.com -w %{http_code} | tail -n1)
+    if [ "${return_code}" = "200" ]; then
+        return 1
+    fi
+    return 0
+}
+
+function check_internet() {
+  if [[ $KERNEL == "Darwin" ]]; then
+    # assume macOS always has internet access
+    return 0
+  fi
+
+  if ping -c 1 -W5 -w15 8.8.8.8 >/dev/null 2>&1; then
+    return 0
+  else
+    return 1
+  fi
+}
+
+function check_region(){
+  if [ "${REGION}" == "" ]; then
+    if behind_gfw; then
+        REGION=china       # mainland china is behind GFW
+    else
+        REGION=default     # otherwise use default mirror
+    fi
+    log_info "region = ${REGION}"
+  fi
+}
+
+#----------------------------------------------#
+# kernel
+#----------------------------------------------#
+function check_kernel(){
+    local kernel_name=$(uname -s)
+    if [[ "${kernel_name}" == "Linux" ]]; then
+        log_info "kernel  = ${kernel_name}"
+        return 0
+    elif [[ "${kernel_name}" == "Darwin" ]]; then
+        log_warn "kernel  = ${kernel_name}, can be used as admin node only"
+    else
+        log_warn "kernel  = ${kernel_name}, not supported, Linux only"
+        #exit 1
+    fi
+}
+
+
+#----------------------------------------------#
+# machine
+#----------------------------------------------#
+function check_machine(){
+    local machine_name=$(uname -m)
+    if [[ "${machine_name}" == "x86_64" || ${machine_name} == "amd64" ]]; then
+        log_info "machine = ${machine_name}"
+        return 0
+    elif [[ "${machine_name}" == "aarch64" || ${machine_name} == "arm64" ]]; then
+        log_info "machine = ${machine_name}"
+        return 0
+    else
+        log_error "machine = ${machine_name}, not supported, x86_64/aarch64 only"
+        exit 2
+    fi
+}
+
+#----------------------------------------------#
+# os package manager (yum|apt|...)
+#----------------------------------------------#
+function check_package_manager(){
+    # get package / manager: rpm|deb and dnf|yum|apt|apt-get|zypper
+    if [[ "$(uname)" == "Darwin" ]]; then
+        OS_PACKAGE="brew"
+        OS_MANAGER="brew"
+        log_info "package = brew (macOS)"
+        return 0
+    fi
+    if command -v dpkg >/dev/null 2>&1; then
+        OS_PACKAGE="deb"
+        if command -v apt >/dev/null 2>&1; then
+            OS_MANAGER="apt"
+        elif command -v apt-get >/dev/null 2>&1; then
+            OS_MANAGER="apt-get"
+        else
+            log_error "fail to determine os package manager for deb"
+            exit 4
+        fi
+    elif command -v rpm >/dev/null 2>&1; then
+        OS_PACKAGE="rpm"
+        if command -v dnf >/dev/null 2>&1; then
+            OS_MANAGER="dnf"
+        elif command -v yum >/dev/null 2>&1; then
+            OS_MANAGER="yum"
+        elif command -v zypper >/dev/null 2>&1; then
+            OS_MANAGER="zypper"
+        else
+            log_error "fail to determine os package manager for rpm"
+            exit 4
+        fi
+    else
+        log_error "fail to determine os package type"
+        exit 3
+    fi
+    log_info "package = ${OS_PACKAGE},${OS_MANAGER}"
+}
+
+
+#----------------------------------------------#
+# os release (Linux|Darwin etc..)
+#----------------------------------------------#
+function check_vendor_version(){
+  if [[ ${KERNEL} == "Darwin" ]]; then
+      return 0
+  fi
+  if [[ -f /etc/os-release ]]; then
+      . /etc/os-release
+      OS_VENDOR="$ID"
+      OS_VERSION_FULL="$VERSION_ID"
+      OS_CODENAME=${VERSION_CODENAME-''}
+      if [[ $VERSION_ID == *.* ]]; then
+          OS_VERSION=$(echo "$VERSION_ID" | cut -d. -f1)
+      else
+          OS_VERSION="${VERSION_ID}"
+      fi
+      log_info "vendor = ${OS_VENDOR} (${NAME})"
+      log_info "version = ${OS_VERSION} (${VERSION_ID})"
+      return 0
+  else
+      log_error "/etc/os-release file not found, unknown OS"
+      exit 5
+  fi
+}
+
+
+#----------------------------------------------#
+# sudo
+#----------------------------------------------#
+function can_nopass_sudo(){
+    local current_user=$(whoami)
+    if [[ "${current_user}" == "root" ]]; then
+        return 0
+    fi
+    if sudo -n ls >/dev/null 2>/dev/null; then
+        return 0
+    fi
+    return 1
+}
+
+# sudo is required to extract /www/pigsty
+function check_sudo(){
+    if [[ ${KERNEL} == "Darwin" ]]; then
+        return 0
+    fi
+    local current_user=$(whoami)
+    if can_nopass_sudo; then
+        log_info "sudo = ${current_user} ok"
+    else
+        log_error "sudo = ${current_user} missing nopasswd"
+        log_warn "fix nopass sudo for '${current_user}' with sudo:"
+        log_hint "echo '%%${current_user} ALL=(ALL) NOPASSWD: ALL' > /etc/sudoers.d/${current_user}"
+        exit 5
+    fi
+}
+
+
+#----------------------------------------------#
+# ssh
+#----------------------------------------------#
+# One MUST have nopass to localhost with same user
+# configure can fix that for you (via ssh-keygen)
+
+function can_nopass_ssh(){
+    local current_user=$(whoami)
+    local user=${1-${current_user}}
+    local ipaddr=${2-'127.0.0.1'}
+    if ssh -oBatchMode=yes -o "StrictHostKeyChecking no" ${user}@${ipaddr} 'ls' 1>/dev/null 2>/dev/null; then
+        return 0
+    else
+        return 1
+    fi
+}
+
+function fix_nopass_ssh(){
+    [[ ! -d ~/.ssh ]] && mkdir -p ~/.ssh && chmod 0700 ~/.ssh;                      # make sure ssh dir exists
+    [[ ! -f ~/.ssh/id_rsa ]] && ssh-keygen -b 2048 -t rsa -f ~/.ssh/id_rsa -q -N '' # gen ssh key if not exists
+    touch ~/.ssh/authorized_keys && chmod 0700 ~/.ssh/{authorized_keys,id_rsa}
+    local publicKey=$(cat ~/.ssh/id_rsa.pub 2>/dev/null)
+    if ! grep -q "${publicKey}" ~/.ssh/authorized_keys; then
+        cat ~/.ssh/id_rsa.pub >> ~/.ssh/authorized_keys
+    fi
+    return $(can_nopass_ssh)
+}
+
+function check_ssh(){
+    if [[ ${KERNEL} == "Darwin" ]]; then
+        return 0
+    fi
+    if can_nopass_ssh ; then
+        log_info "ssh = $(whoami)@127.0.0.1 ok"
+        return 0
+    fi
+    if fix_nopass_ssh; then
+        log_warn "ssh = $(whoami)@127.0.0.1 fixed"
+        return 0
+    else
+        log_warn "ssh = $(whoami)@127.0.0.1 failed"
+        # exit 6   # we don't exit here , just a configure process
+    fi
+}
+
+
+#----------------------------------------------#
+# check repo
+#----------------------------------------------#
+# assume user can sudo (pass check_sudo)
+function check_repo(){
+    if [[ ${KERNEL} == "Darwin" ]]; then
+        return 0
+    fi
+    local pkg_path=${1-${PKG_PATH}}         # default download path : /tmp/pkg.tgz
+    local repo_dir=${2-${REPO_DIR}}         # default repo directory: /www/pigsty
+    local nginx_home=$(dirname ${repo_dir})
+    local repo_name=$(basename ${repo_dir})
+
+    # setup repo home, but keep an existing /www directory intact
+    if [[ -e ${nginx_home} && ! -d ${nginx_home} && ! -L ${nginx_home} ]]; then
+        log_error "nginx home = ${nginx_home} exists but is not a directory or symlink"
+        return 1
+    fi
+    if [[ ! -e ${nginx_home} ]]; then
+        sudo mkdir -p /data /data/nginx
+        sudo ln -sf /data/nginx ${nginx_home}
+    else
+        sudo mkdir -p ${nginx_home}
+    fi
+
+    # if there's a repo with repo_complete flag, it means repo is ready, skip
+    if [[ -f ${repo_dir}/repo_complete ]]; then
+        log_info "repo = ${repo_dir} ok"
+        return 0
+    fi
+
+    # otherwise, if there's no /tmp/pkg.tgz, we can do nothing with repo, skip
+    if [[ ! -f ${pkg_path} ]]; then
+        return 0
+    else # if the /tmp/pkg.tgz exists, but looks suspicious, remove it
+        if (($(stat -c%s ${pkg_path})>409600000)); then
+            log_info "cache = ${pkg_path} exists"
+        else
+            log_warn "cache = ${pkg_path} exists but invalid"
+            rm -rf ${pkg_path}
+            return 0
+        fi
+    fi
+
+    # extract /tmp/pkg.tgz to /www/pigsty
+    if [[ -d ${repo_dir} ]]; then
+        log_warn "repo = invalid, remove"
+        sudo rm -rf ${repo_dir}
+    fi
+    log_info "repo = extract from ${pkg_path}"
+    if ! [ -x "$(command -v tar)" ]; then
+      log_error 'tar is not installed'
+      return 1
+    fi
+    sudo tar -xf ${pkg_path} -C ${nginx_home}  # extract
+}
+
+
+#----------------------------------------------#
+# check local file repo
+#----------------------------------------------#
+# Usage: add_el7_repo [region] (default|china|europe)
+function add_el7_repo(){
+    local region=${1-"default"}
+    local releasever=7
+    local basearch=x86_64
+    if [ "${region}" = "china" ]; then
+      cat > "/tmp/el${releasever}.repo" <<-EOF
+[base]
+name = EL 7 Base $releasever - $basearch
+baseurl = https://mirrors.aliyun.com/centos/7/os/$basearch/
+gpgcheck = 0
+enabled = 1
+[updates]
+name = EL 7 Updates $releasever - $basearch
+baseurl = https://mirrors.aliyun.com/centos/7/updates/$basearch/
+gpgcheck = 0
+enabled = 1
+[extras]
+name = EL 7 Extras $releasever - $basearch
+baseurl = https://mirrors.aliyun.com/centos/7/extras/$basearch/
+gpgcheck = 0
+enabled = 1
+[epel]
+name = EL 7 EPEL $releasever - $basearch
+baseurl = https://mirrors.aliyun.com/epel/7/$basearch/
+gpgcheck = 0
+enabled = 1
+EOF
+    else
+      cat > "/tmp/el${releasever}.repo" <<-EOF
+[base]
+name = EL 7 Base $releasever - $basearch
+baseurl = https://vault.centos.org/7.9.2009/os/x86_64/
+gpgcheck = 0
+enabled = 1
+[updates]
+name = EL 7 Updates $releasever - $basearch
+baseurl = https://vault.centos.org/7.9.2009/updates/x86_64/
+gpgcheck = 0
+enabled = 1
+[extras]
+name = EL 7 Extras $releasever - $basearch
+baseurl = https://vault.centos.org/7.9.2009/extras/x86_64/
+gpgcheck = 0
+enabled = 1
+[epel]
+name = EL 7 EPEL $releasever - $basearch
+baseurl = http://archives.fedoraproject.org/pub/archive/epel/7/x86_64/
+gpgcheck = 0
+enabled = 1
+EOF
+    fi
+
+    # el7's existing repo may not working any more after EOL
+    sudo mkdir -p /etc/yum.repos.d/backup
+    sudo mv -f /etc/yum.repos.d/*.repo /etc/yum.repos.d/backup/ 2> /dev/null || true
+    sudo mv -f "/tmp/el${releasever}.repo" "/etc/yum.repos.d/el${releasever}.repo"
+}
+
+# Usage: add_el89_repo [region] (default|china|europe)
+function add_el89_repo(){
+    local region=${1-"default"}
+    local releasever=${OS_VERSION}
+    local suffix=""
+    if [ "${region}" = "china" ]; then
+      baseurl="https://mirrors.aliyun.com"
+      epelbase="https://mirrors.aliyun.com/epel"
+      suffix=linux
+    elif [ "${region}" = "europe" ]; then
+      baseurl="https://mirrors.xtom.de"
+      epelbase="https://mirrors.xtom.de/epel"
+    else
+      baseurl="https://dl.rockylinux.org/pub"
+      epelbase="https://mirrors.edge.kernel.org/fedora-epel"
+    fi
+    cat > "/tmp/el${releasever}.repo" <<-EOF
+[baseos-default]
+name = EL ${releasever} BaseOS \$releasever - \$basearch
+baseurl = ${baseurl}/rocky${suffix}/\$releasever/BaseOS/\$basearch/os/
+gpgcheck = 0
+enabled = 1
+skip_if_unavailable = 1
+module_hotfixes=1
+[appstream-default]
+name = EL ${releasever} AppStream \$releasever - \$basearch
+baseurl = ${baseurl}/rocky${suffix}/\$releasever/AppStream/\$basearch/os/
+gpgcheck = 0
+enabled = 1
+skip_if_unavailable = 1
+module_hotfixes=1
+[epel-default]
+name = EL ${releasever} EPEL \$releasever - \$basearch
+baseurl = ${epelbase}/\$releasever/Everything/\$basearch/
+gpgcheck = 0
+enabled = 1
+skip_if_unavailable = 1
+module_hotfixes=1
+EOF
+  sudo mv -f "/tmp/el${releasever}.repo" "/etc/yum.repos.d/el${releasever}.repo"
+}
+
+# Usage: add_el10_repo [region] (default|china|europe)
+# add pigsty repo to fill some missing ansible packages
+# Pigsty targets stable EL10 variants here; EPEL serves those via 10z, not minor paths.
+function add_el10_repo(){
+    local region=${1-"default"}
+    local releasever=${OS_VERSION}
+    local epel_release=${PIGSTY_EPEL_RELEASE:-"${releasever}z"}
+    local suffix=""
+    if [ "${region}" = "china" ]; then
+      pigstyrepo="https://repo.pigsty.cc"
+      baseurl="https://mirrors.aliyun.com"
+      epelbase="https://mirrors.aliyun.com/epel"
+      suffix=linux
+    elif [ "${region}" = "europe" ]; then
+      pigstyrepo="https://repo.pigsty.io"
+      baseurl="https://mirrors.xtom.de"
+      epelbase="https://mirrors.xtom.de/epel"
+    else
+      pigstyrepo="https://repo.pigsty.io"
+      baseurl="https://dl.rockylinux.org/pub"
+      epelbase="https://mirrors.edge.kernel.org/fedora-epel"
+    fi
+    cat > "/tmp/el${releasever}.repo" <<-EOF
+[pigsty-pgsql]
+name = Pigsty PGSQL \$releasever - \$basearch
+baseurl = ${pigstyrepo}/yum/pgsql/el\$releasever.\$basearch
+gpgcheck = 0
+enabled = 1
+skip_if_unavailable = 1
+module_hotfixes=1
+[baseos-default]
+name = EL ${releasever} BaseOS \$releasever - \$basearch
+baseurl = ${baseurl}/rocky${suffix}/\$releasever/BaseOS/\$basearch/os/
+gpgcheck = 0
+enabled = 1
+skip_if_unavailable = 1
+module_hotfixes=1
+[appstream-default]
+name = EL ${releasever} AppStream \$releasever - \$basearch
+baseurl = ${baseurl}/rocky${suffix}/\$releasever/AppStream/\$basearch/os/
+gpgcheck = 0
+enabled = 1
+skip_if_unavailable = 1
+module_hotfixes=1
+[crb-default]
+name = EL ${releasever} CRB \$releasever - \$basearch
+baseurl = ${baseurl}/rocky${suffix}/\$releasever/CRB/\$basearch/os/
+gpgcheck = 0
+enabled = 1
+skip_if_unavailable = 1
+module_hotfixes=1
+[epel-default]
+name = EL ${releasever} EPEL ${epel_release} - \$basearch
+baseurl = ${epelbase}/${epel_release}/Everything/\$basearch/
+gpgcheck = 0
+enabled = 1
+skip_if_unavailable = 1
+module_hotfixes=1
+EOF
+  sudo mv -f "/tmp/el${releasever}.repo" "/etc/yum.repos.d/el${releasever}.repo"
+}
+
+# Usage: add_ubuntu_repo [region] (default|china|europe)
+function add_ubuntu_repo(){
+    local region=${1-"default"}
+    if [ "${region}" = "china" ]; then
+      if [ "${ARCH}" == "aarch64" ]; then
+          baseurl="https://mirrors.aliyun.com/ubuntu-ports/"
+      else
+          baseurl="https://mirrors.aliyun.com/ubuntu/"
+      fi
+    else
+      if [ "${ARCH}" == "aarch64" ]; then
+          baseurl="http://ports.ubuntu.com/ubuntu-ports/"
+      else
+          baseurl="https://mirrors.edge.kernel.org/ubuntu/"
+      fi
+
+    fi
+    cat > "/tmp/sources.list" <<-EOF
+deb [trusted=yes] ${baseurl} ${OS_CODENAME}           main universe multiverse restricted
+deb [trusted=yes] ${baseurl} ${OS_CODENAME}-backports main restricted universe multiverse
+deb [trusted=yes] ${baseurl} ${OS_CODENAME}-security  main restricted universe multiverse
+deb [trusted=yes] ${baseurl} ${OS_CODENAME}-updates   main restricted universe multiverse
+EOF
+      sudo mv -f "/tmp/sources.list" "/etc/apt/sources.list"
+}
+
+# Usage: add_debian_repo [region] (default|china|europe)
+function add_debian_repo(){
+    local region=${1-"default"}
+    if [ "${region}" = "china" ]; then
+        cat > "/tmp/sources.list" <<-EOF
+deb [trusted=yes] https://mirrors.aliyun.com/debian/ ${OS_CODENAME} main non-free-firmware
+deb [trusted=yes] https://mirrors.aliyun.com/debian/ ${OS_CODENAME}-updates main non-free-firmware
+deb [trusted=yes] https://mirrors.aliyun.com/debian-security/ ${OS_CODENAME}-security main non-free-firmware
+EOF
+    else
+        cat > "/tmp/sources.list" <<-EOF
+deb [trusted=yes] http://deb.debian.org/debian/ ${OS_CODENAME} main non-free-firmware
+deb [trusted=yes] http://deb.debian.org/debian/ ${OS_CODENAME}-updates main non-free-firmware
+deb [trusted=yes] http://security.debian.org/debian-security ${OS_CODENAME}-security main non-free-firmware
+EOF
+    fi
+      sudo mv -f "/tmp/sources.list" "/etc/apt/sources.list"
+}
+
+#----------------------------------------------#
+# add local file repo
+#----------------------------------------------#
+function add_local_repo(){
+    local nginx_home=${1-${NGINX_HOME}}
+    local repo_name=${2-${REPO_NAME}}
+
+    # add local repo for el compatible releases
+    if [[ ${OS_PACKAGE} == "rpm" ]]; then
+        local releasever=${OS_VERSION}
+        cat > /tmp/pigsty-local.repo  <<-EOF
+[pigsty-local]
+name=pigsty local \$releasever - \$basearch
+baseurl=file://${nginx_home}/${repo_name}/
+enabled=1
+gpgcheck=0
+EOF
+        if (( ${OS_VERSION} >= 8 )); then
+          echo "module_hotfixes=1" >> /tmp/pigsty-local.repo
+        fi
+        log_info "repo file = use /etc/yum.repos.d/pigsty-local.repo"
+        sudo mv -f /tmp/pigsty-local.repo /etc/yum.repos.d/pigsty-local.repo
+        return 0
+    fi
+
+    if [[ ${OS_PACKAGE} == "deb" ]]; then
+        echo "deb [trusted=yes] file:${nginx_home}/${repo_name}/ ./" > /tmp/pigsty-local.list
+        sudo mv /tmp/pigsty-local.list /etc/apt/sources.list.d/pigsty-local.list
+        log_info "repo file = use /etc/apt/sources.list.d/pigsty-local.list"
+        return 0
+    fi
+
+    log_warn "repo file = unknown"
+    return 1
+}
+
+
+function remove_existing_repo(){
+    if [[ ${REMOVE_REPO} == "yes" ]]; then
+        if [[ ${OS_PACKAGE} == "rpm" ]]; then
+            log_warn "old repos = moved to /etc/yum.repos.d/backup"
+            sudo mkdir -p /etc/yum.repos.d/backup
+            sudo mv -f /etc/yum.repos.d/*.repo /etc/yum.repos.d/backup/ 2> /dev/null || true
+        fi
+        if [[ ${OS_PACKAGE} == "deb" ]]; then
+            log_warn "old repos = moved to /etc/apt/backup"
+            sudo mkdir -p /etc/apt/backup
+            sudo mv -f /etc/apt/sources.list.d/* /etc/apt/backup/ 2> /dev/null || true
+            sudo mv -f /etc/apt/sources.list     /etc/apt/backup/ 2> /dev/null || true
+            sudo rm -rf /tmp/pigsty-local.list;
+        fi
+    fi
+}
+
+function restore_backup_repo(){
+    if [[ ${OS_PACKAGE} == "rpm" ]]; then
+        sudo cp -f /etc/yum.repos.d/backup/*.repo /etc/yum.repos.d/ 2> /dev/null || true
+    fi
+    if [[ ${OS_PACKAGE} == "deb" ]]; then
+        if [[ -f /etc/apt/backup/sources.list ]]; then
+            sudo mv -f /etc/apt/backup/sources.list /etc/apt/sources.list 2> /dev/null || true
+        fi
+        sudo mv -f /etc/apt/backup/* /etc/apt/sources.list.d/ 2> /dev/null || true
+    fi
+}
+
+
+function add_upstream_repo(){
+    if [[ ${OS_PACKAGE} == "rpm" ]]; then
+        if [[ $OS_VERSION == "7" ]]; then
+            add_el7_repo "${REGION}"
+        elif [[ $OS_VERSION == "8" ||  $OS_VERSION == "9" ]]; then
+            add_el89_repo "${REGION}"
+        elif [[ $OS_VERSION == "10" ]]; then
+            add_el10_repo "${REGION}"
+        else
+            log_error "unsupported el version ${OS_VERSION}, please use el7, el8, el9 or el10"
+            exit 10
+        fi
+        log_info "repo file = add el${OS_VERSION}.${ARCH} ${REGION} upstream"
+    elif [[ ${OS_PACKAGE} == "deb" ]]; then
+        if [[ ${OS_VENDOR} == "ubuntu" ]]; then
+            add_ubuntu_repo "${REGION}"
+        elif [[ ${OS_VENDOR} == "debian" ]]; then
+            add_debian_repo "${REGION}"
+        fi
+        log_info "repo file = add ${OS_VENDOR} ${OS_CODENAME} ${REGION} upstream"
+    fi
+}
+
+function make_repo_cache(){
+    if [[ ${OS_PACKAGE} == "rpm" ]]; then
+        log_warn "rpm cache = updating, may take a while"
+        sudo yum clean all -q
+        sudo yum makecache
+    elif [[ ${OS_PACKAGE} == "deb" ]]; then
+        log_warn "apt cache = updating, may take a while"
+        sudo apt update
+    fi
+    log_info "repo cache = created"
+}
+
+
+#----------------------------------------------#
+# check_repo_file
+#----------------------------------------------#
+function check_repo_file(){
+    if [[ ${KERNEL} == "Darwin" ]]; then
+        return 0
+    fi
+    local repo_name=${1-${REPO_NAME}}
+    local nginx_home=${2-${NGINX_HOME}}
+    local repo_flag=${nginx_home}/${repo_name}/repo_complete
+    if [[ -f ${repo_flag} ]]; then
+        # if repo exists, remove or keep existing repo according to arg (-k|--keep)
+        remove_existing_repo
+        add_local_repo
+    else
+        if check_internet; then
+            # if there's internet access, add upstream repo file, and remove or keep existing repo according to arg (-k|--keep)
+            remove_existing_repo
+            add_upstream_repo
+        fi
+    fi
+    make_repo_cache
+}
+
+
+#----------------------------------------------#
+# check utils
+#----------------------------------------------#
+# install ansible sshpass unzip wget yum , etc...
+function check_utils(){
+    local repo_name=${1-${REPO_NAME}}
+    local nginx_home=${2-${NGINX_HOME}}
+    local repo_file=/etc/yum.repos.d/${repo_name}-local.repo
+
+    # if ansible is already installed, skip
+    if command -v ansible-playbook >/dev/null ; then
+        log_info "ansible already installed, skip"
+        return 0
+    fi
+
+    if [[ ${KERNEL} == "Darwin" ]]; then
+        log_warn "please install ansible with: brew install ansible"
+        return 0
+    fi
+
+    # install el utils
+    if [[ ${OS_PACKAGE} == "rpm" ]]; then
+        if [[ $OS_VERSION == "7" ]]; then
+            log_info "install el7 utils"
+            sudo yum install -y createrepo_c unzip wget yum-utils sshpass
+            sudo yum install -y ansible
+        elif [[ $OS_VERSION == "8" ]]; then
+            log_info "install el8 utils"
+            sudo dnf install -y createrepo_c unzip wget dnf-utils sshpass modulemd-tools
+            sudo dnf install -y ansible python3.12-jmespath python3-cryptography
+        elif [[ $OS_VERSION == "9" ]]; then
+            log_info "install el9 utils"
+            sudo dnf install -y createrepo_c unzip wget dnf-utils sshpass modulemd-tools
+            sudo dnf install -y ansible python3-jmespath
+        elif [[ $OS_VERSION == "10" ]]; then
+            log_info "install el10 utils"
+            sudo dnf install -y createrepo_c unzip wget dnf-utils sshpass
+            sudo dnf install -y ansible python3-jmespath
+        fi
+    fi
+
+    # install deb utils
+    if [[ ${OS_PACKAGE} == "deb" ]]; then
+        sudo apt install -y unzip wget sshpass acl
+        sudo apt install -y ansible python3-jmespath
+    fi
+
+    # check ansible is installed
+    if command -v ansible-playbook >/dev/null ; then
+        log_info "ansible = $(ansible --version | head -n1)"
+    else
+        log_error "ansible = not found"
+        exit 20
+    fi
+}
+
+
+#--------------------------------------------------------------#
+# Main
+#--------------------------------------------------------------#
+function main(){
+    # arg parsing
+    while [ $# -gt 0 ]; do
+        case $1 in
+            -h|--help)
+                echo './bootstrap [-r|--region <region>] [-p|--path <pkg>] [-y|--yes]'
+                exit 0;;
+            -r|--region) REGION="$2"       ; shift ;;
+            -p|--path|--pkg) PKG_PATH="$2" ; shift ;;
+            -k|--keep) REMOVE_REPO=no      ;;
+            (--) shift; break              ;;
+            (-*) echo "$0: error - unrecognized option $1" 1>&2; exit 1;;
+            (*) break;;
+        esac
+        shift
+    done
+
+    log_hint "bootstrap pigsty ${PIGSTY_VERSION} begin\n"
+    check_region          # region        = default
+    check_kernel          # kernel        = Linux
+    check_machine         # machine       = x86_64 or aarch64
+    check_package_manager # package = rpm|deb, manager = dnf|yum|zypper|apt|apt-get
+    check_vendor_version  # release       = rocky / debian / ubuntu version = 8,9,12,22,24
+    check_sudo            # current_user  = NOPASSWD sudo
+    check_ssh             # current_user  = NOPASSWD ssh
+    check_repo            # create repo from pkg.tgz if exists
+    check_repo_file       # create local file repo file if repo exists
+    check_utils           # check ansible sshpass and other utils installed
+    log_info "boostrap pigsty complete"
+    log_hint "proceed with ./configure\n"
+}
+
+main $@

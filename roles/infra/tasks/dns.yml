@@ -1,0 +1,100 @@
+---
+#--------------------------------------------------------------#
+# Create DNS Dir                                       [dns_dir]
+#--------------------------------------------------------------#
+# dnsmasq reads generated host records from this directory
+- name: create dns records dir
+  tags: dns_dir
+  file: path=/etc/dnsmasq.d/pigsty state=directory mode=0755 owner=root group=dnsmasq
+
+# preserve registered records when upgrading from previous locations
+- name: migrate legacy dns records
+  tags: dns_dir
+  shell: |
+    for old_dir in /infra/hosts /etc/hosts.d; do
+      [ -d "${old_dir}" ] || continue
+      for src in "${old_dir}"/*; do
+        [ -f "${src}" ] || continue
+        dst="/etc/dnsmasq.d/pigsty/${src##*/}"
+        [ -e "${dst}" ] && continue
+        tmp="/etc/dnsmasq.d/pigsty/.${src##*/}.migrate.tmp"
+        cp "${src}" "${tmp}"
+        chown root:root "${tmp}"
+        chmod 0644 "${tmp}"
+        mv "${tmp}" "${dst}"
+        echo "${dst}"
+      done
+    done
+  args: { executable: /bin/bash }
+  register: dns_migrate
+  changed_when: dns_migrate.stdout|default('') != ''
+
+
+#--------------------------------------------------------------#
+# Config DNS                                        [dns_config]
+#--------------------------------------------------------------#
+- name: copy dnsmasq systemd service
+  tags: dns_config
+  template: src=dns/{{ item.src }} dest={{ item.dest }} owner=root group=root mode=0644
+  with_items:
+    - { src: dnsmasq.svc  ,dest: "{{ systemd_dir }}/dnsmasq.service" }
+    - { src: dnsmasq.conf ,dest: "/etc/dnsmasq.conf"                 }
+
+
+#--------------------------------------------------------------#
+# Write DNS Records                                 [dns_record]
+#--------------------------------------------------------------#
+# render to temp file first, then atomic mv to avoid dnsmasq inotify race
+- name: render default dns records
+  tags: dns_record
+  copy:
+    dest: /etc/dnsmasq.d/pigsty/.default.tmp
+    owner: root
+    group: root
+    mode: 0644
+    content: |
+      {% for rec in dns_records|default([]) %}
+      {{ rec|replace('${admin_ip}', admin_ip) }}
+      {% endfor %}
+
+- name: activate default dns records
+  tags: dns_record
+  command: mv /etc/dnsmasq.d/pigsty/.default.tmp /etc/dnsmasq.d/pigsty/default
+
+#--------------------------------------------------------------#
+# Normalize SELinux for Dnsmasq                    [dns_selinux]
+#--------------------------------------------------------------#
+# /etc/dnsmasq.d already uses dnsmasq_etc_t in the stock policy
+- name: cleanup legacy dnsmasq selinux overrides
+  tags: [ dns_selinux ]
+  ignore_errors: true
+  shell: |
+    if command -v restorecon &>/dev/null; then
+      restorecon -Fv /etc/dnsmasq.d
+      restorecon -RFv /etc/dnsmasq.d/pigsty
+    fi
+    if command -v semanage &>/dev/null; then
+      semanage permissive -d dnsmasq_t 2>/dev/null && echo "removed dnsmasq_t permissive override" || true
+      semanage fcontext -d "{{ infra_data }}/hosts(/.*)?" 2>/dev/null && echo "removed {{ infra_data }}/hosts fcontext override" || true
+      semanage fcontext -d "/data/infra/hosts" 2>/dev/null && echo "removed /data/infra/hosts fcontext override" || true
+      semanage fcontext -d "/etc/hosts.d(/.*)?" 2>/dev/null && echo "removed /etc/hosts.d fcontext override" || true
+    fi
+  args: { executable: /bin/bash }
+  register: dnsmasq_selinux
+  changed_when: dnsmasq_selinux.stdout|default('') != ''
+
+
+#--------------------------------------------------------------#
+# Write DNS Records                                 [dns_launch]
+#--------------------------------------------------------------#
+- name: launch dnsmasq systemd service
+  tags: dns_launch
+  when: dns_enabled|bool
+  ignore_errors: true
+  block:
+    - name: launch dnsmasq systemd service
+      systemd: name=dnsmasq state=restarted enabled=yes daemon_reload=yes
+    - name: wait for dnsmasq service online
+      wait_for: host=127.0.0.1 port={{ dns_port }} state=started
+
+...

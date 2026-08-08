@@ -1,0 +1,50 @@
+---
+#-----------------------------------------------------------------
+# CLI ARG
+#-----------------------------------------------------------------
+clsname: ''                            # if specified, only this pg_cluster will be init
+#-----------------------------------------------------------------
+# PG_IDENTITY
+#-----------------------------------------------------------------
+pg_mode: pgsql                         # pgsql cluster mode: pgsql,citus,gpsql,mssql,mysql,ivory,polar
+#-----------------------------------------------------------------
+# PG_EXPORTER
+#-----------------------------------------------------------------
+pg_exporter_config: pg_exporter.yml    # pg_exporter configuration file name
+pg_exporter_cache_ttls: '1,10,60,300'  # pg_exporter collector ttl stage in seconds, '1,10,60,300' by default
+pg_exporter_port: 9630                 # pg_exporter listen port, 9630 by default
+pg_exporter_params: 'sslmode=disable'  # extra url parameters for pg_exporter dsn
+pg_exporter_url: ''                    # overwrite auto-generate pg dsn if specified
+pg_exporter_auto_discovery: true       # enable auto database discovery? enabled by default
+pg_exporter_exclude_database: 'template0,template1,postgres' # csv of database that WILL NOT be monitored during auto-discovery
+pg_exporter_include_database: ''       # csv of database that WILL BE monitored during auto-discovery
+pg_exporter_connect_timeout: 200       # pg_exporter connect timeout in ms, 200 by default
+pg_exporter_options: ''                # overwrite extra options for pg_exporter
+
+#-----------------------------------------------------------------
+# PG_BUSINESS (Reference)
+#-----------------------------------------------------------------
+pg_monitor_username: dbuser_monitor
+pg_monitor_password: DBUser.Monitor
+#-----------------------------------------------------------------
+# PG_INSTALL (Reference)
+#-----------------------------------------------------------------
+pg_dbsu: postgres                 # os user for database, postgres by default, better not change it
+pg_version: 18                    # postgres major version to be installed, 18 by default
+#-----------------------------------------------------------------
+# PG_BOOTSTRAP (Reference)
+#-----------------------------------------------------------------
+pg_port: 5432                     # postgres port, 5432 by default
+pgbouncer_port: 6432              # pgbouncer port, 6432 by default
+pg_localhost: /var/run/postgresql # unix socket dir for localhost connection
+#-----------------------------------------------------------------
+# PROMETHEUS (Reference)
+#-----------------------------------------------------------------
+exporter_metrics_path: /metrics   # exporter metric path
+#-----------------------------------------------------------------
+# GRAFANA (Reference)
+#-----------------------------------------------------------------
+grafana_port: 3000                # grafana listen port, 3000 by default
+grafana_admin_username: admin     # default grafana admin username
+grafana_admin_password: pigsty    # default grafana admin password
+...

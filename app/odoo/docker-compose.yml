@@ -1,0 +1,47 @@
+# please change the credentials in .env file!
+#!/usr/bin/env docker compose
+---
+#==============================================================#
+# File      :   docker-compose.yml
+# Desc      :   odoo docker compose template
+# Ctime     :   2024-09-19
+# Mtime     :   2025-01-12
+# Path      :   app/odoo/docker-compose.yml
+# License   :   Apache-2.0 @ https://pigsty.io/docs/about/license/
+# Copyright :   2018-2026  Ruohang Feng / Vonng (rh@vonng.com)
+#==============================================================#
+# Image:    https://hub.docker.com/_/odoo
+# Tutorial: https://pigsty.io/docs/app/odoo
+
+
+name: odoo
+services:
+
+  # the main odoo container
+  odoo:
+    container_name: odoo
+    image: odoo:${ODOO_VERSION}
+    ports:
+      - ${ODOO_PORT}:8069
+    environment:
+      - HOST=${PG_HOST}
+      - PORT=${PG_PORT}
+      - USER=${PG_USERNAME}
+      - PASSWORD=${PG_PASSWORD}
+    volumes:
+      - ${ODOO_DATA}:/var/lib/odoo
+      - ${ODOO_ADDONS}:/mnt/extra-addons
+      #- ./config:/etc/odoo
+
+  # run this init schema migration with: docker compose --profile init up odoo-init
+  odoo-init:
+    image: odoo:${ODOO_VERSION}
+    profiles: ["init"]
+    command: [ odoo, --stop-after-init , --init=base , -d,  "${ODOO_DBNAME}" ]  #--without-demo
+    environment:
+      - HOST=${PG_HOST}
+      - PORT=${PG_PORT}
+      - USER=${PG_USERNAME}
+      - PASSWORD=${PG_PASSWORD}
+    restart: "no"
+...

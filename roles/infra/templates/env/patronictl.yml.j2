@@ -1,0 +1,63 @@
+---
+#==============================================================#
+# File      :   patronictl.yml
+# Desc      :   init postgres cluster/instance
+# Ctime     :   2020-05-12
+# Mtime     :   2025-12-18
+# Path      :   /infra/conf/patronictl.yml
+# License   :   Apache-2.0 @ https://pigsty.io/docs/about/license/
+# Copyright :   2018-2026  Ruohang Feng / Vonng (rh@vonng.com)
+#==============================================================#
+# {{ ansible_managed }}
+{% set pg_allow_list = ( [admin_ip] + groups["infra"]|default([]) )|sort|unique %}
+
+#--------------------------------------------------------------#
+# dcs: etcd
+#--------------------------------------------------------------#
+namespace: {{ pg_namespace }}/          # namespace
+etcd3:
+{% if 'etcd' in groups %}
+  hosts: '{% for ip in groups['etcd']|default([])|sort %}{% if not loop.first %},{% endif %}{{ ip }}:{{ etcd_port }}{% endfor %}'
+{% else %}
+  hosts: '{{ admin_ip|default('10.10.10.10') }}:2379'
+{% endif %}
+  protocol: https
+  cacert: /etc/pki/ca.crt
+  cert:   /etc/pki/infra.crt
+  key:    /etc/pki/infra.key
+  username: "root"
+  password: "{{ etcd_root_password|default('Etcd.Root') }}"
+
+#--------------------------------------------------------------#
+# api
+#--------------------------------------------------------------#
+# how to expose patroni service
+# listen on all ipv4, connect via public ip
+restapi:
+  listen: 0.0.0.0:{{ patroni_port }}
+  connect_address: {{ inventory_hostname }}:{{ patroni_port }}
+{% if patroni_ssl_enabled|bool %}
+  insecure: false
+  cacert:    '/etc/pki/ca.crt'
+  certfile: '/etc/pki/infra.crt'
+  keyfile:  '/etc/pki/infra.key'
+{% endif %}
+  # unsafe api can only been accessed from meta nodes with auth
+  authentication:
+    verify_client: optional  # none|optional|required
+    username: '{{ patroni_username }}'
+    password: '{{ patroni_password }}'
+  allowlist: [ {{ pg_allow_list|join(', ') }} ]
+
+#--------------------------------------------------------------#
+# ctl
+#--------------------------------------------------------------#
+ctl:
+{% if patroni_ssl_enabled|bool %}
+  insecure: false
+  cacert:   '/etc/pki/ca.crt'
+  certfile: '/etc/pki/infra.crt'
+  keyfile:  '/etc/pki/infra.key'
+{% else %}
+  insecure: true
+{% endif %}

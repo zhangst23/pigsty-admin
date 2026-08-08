@@ -1,0 +1,23 @@
+---
+#--------------------------------------------------------------#
+# JUICE - JuiceFS Multi-Instance Configuration
+#--------------------------------------------------------------#
+# https://juicefs.com/docs/community/command_reference
+#
+# juice_cache: /data/juice                # cache directory (shared by all instances)
+# juice_instances:                        # dict of juicefs filesystems
+#   <name>:                               # fs name (instance key)
+#     path  : /fs                         # [REQUIRED] mountpoint path
+#     meta  : postgres://u:p@h:5432/db    # [REQUIRED] metadata engine URL
+#     data  : --storage postgres ...      # format options (storage backend), default: ''
+#     unit  : juicefs-<name>              # systemd service name, default: juicefs-<name>
+#     mount : ''                          # extra mount options, default empty
+#     port  : 9567                        # metrics port, default: 9567
+#     owner : root                        # mountpoint owner, default: root
+#     group : root                        # mountpoint group, default: root
+#     mode  : '0755'                      # mountpoint mode, default: 0755
+#     state : create                      # create | absent, default: create
+#--------------------------------------------------------------#
+juice_cache: /data/juice
+juice_instances: {}
+...

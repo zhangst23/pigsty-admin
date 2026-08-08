@@ -1,0 +1,124 @@
+---
+#--------------------------------------------------------------#
+# PG_DBSU                                  [pg_install][pg_dbsu]
+#--------------------------------------------------------------#
+# pg_dbsu_create, pg_dbsu_create, pg_dbsu_ssh
+- import_tasks: dbsu.yml
+  tags: [ pg_install, pg_dbsu ]
+
+#--------------------------------------------------------------#
+# PG_INSTALL                                        [pg_install]
+#--------------------------------------------------------------#
+# pg_pkg, pg_link, pg_path, pg_dir, pg_bin, pg_alias, pg_dummy
+- import_tasks: install.yml
+  tags: [ pg_install ]
+
+#--------------------------------------------------------------#
+# Config                                  [pg_bootstrap][config]
+#--------------------------------------------------------------#
+# pg_conf, pg_key, pg_pitr_conf
+- import_tasks: config.yml
+  tags: [ pg_bootstrap, postgres, patroni, pg_config ]
+  when: patroni_enabled|bool
+
+#--------------------------------------------------------------#
+# Cert                                   [pg_bootstrap][pg_cert]
+#--------------------------------------------------------------#
+# pg_cert_private, pg_cert_issue, pg_cert_copy
+- import_tasks: cert.yml
+  tags: [ pg_bootstrap, postgres, patroni, pg_cert ]
+
+#--------------------------------------------------------------#
+# Launch                               [pg_bootstrap][pg_launch]
+#--------------------------------------------------------------#
+# pg_watchdog, pg_primary, pg_init, pg_pass, pg_replica
+# pg_hba, patroni_reload, pg_patroni
+- import_tasks: patroni.yml
+  tags: [ pg_bootstrap, postgres, patroni, pg_launch ]
+  when: patroni_enabled|bool
+
+#--------------------------------------------------------------#
+# Users                                  [pg_provision][pg_user]
+#--------------------------------------------------------------#
+# pg_user_config, pg_user_create
+- include_tasks: user.yml
+  tags: [ pg_provision, pg_user ]
+  when: pg_provision|bool
+  vars: {user: "{{ item }}" }
+  with_items: "{{ pg_users }}"
+
+#--------------------------------------------------------------#
+# Databases                                [pg_provision][pg_db]
+#--------------------------------------------------------------#
+# pg_db_drop, pg_db_config, pg_db_create, pg_db_baseline
+- include_tasks: database.yml
+  when: pg_provision|bool
+  tags: [ pg_provision, pg_db ]
+  vars: { database: "{{ item }}" }
+  with_items: "{{ pg_databases }}"
+
+#--------------------------------------------------------------#
+# Backup                                 [pg_backup][pgbackrest]
+#--------------------------------------------------------------#
+# pgbackrest_init, pgbackrest_backup
+- import_tasks: pgbackrest.yml
+  when: pgbackrest_enabled|bool
+  tags: [ pg_backup, pgbackrest ]
+
+#--------------------------------------------------------------#
+# Crontab                                           [pg_crontab]
+#--------------------------------------------------------------#
+# setup postgres dbsu crontab entries
+- import_tasks: crontab.yml
+  tags: [ pg_crontab ]
+
+#--------------------------------------------------------------#
+# Pgbouncer                               [pg_access][pgbouncer]
+#--------------------------------------------------------------#
+# pgbouncer_dir, pgbouncer_config, pgbouncer_launch, pgbouncer_reload
+# pgbouncer_hba, pgbouncer_user
+- import_tasks: pgbouncer.yml
+  tags: [ pg_access, pgbouncer ]
+  when: pgbouncer_enabled|bool
+
+#--------------------------------------------------------------#
+# VIP                                        [pg_access][pg_vip]
+#--------------------------------------------------------------#
+# pg_vip_config, pg_vip_launch
+- import_tasks: vip.yml
+  tags: [ pg_access, pg_vip ]
+
+#--------------------------------------------------------------#
+# Domain Name                                [pg_access][pg_dns]
+#--------------------------------------------------------------#
+# pg_dns_ins, pg_dns_cls
+- import_tasks: dns.yml
+  when: dns_enabled|bool
+  tags: [ pg_access, pg_dns ]
+
+#--------------------------------------------------------------#
+# Service (Local HAProxy Provider)       [pg_access][pg_service]
+#--------------------------------------------------------------#
+# pg_service_config, pg_service_reload
+- import_tasks: service_local.yml
+  tags: [ pg_access, pg_service ]
+  when: pg_service_provider == '' or pg_service_provider not in groups
+
+#--------------------------------------------------------------#
+# Service (Remote HAProxy Provider)      [pg_access][pg_service]
+#--------------------------------------------------------------#
+# pg_service_config, pg_service_reload
+- import_tasks: service_remote.yml
+  tags: [ pg_access, pg_service ]
+  when: pg_service_provider != '' and pg_service_provider in groups and pg_role == 'primary'
+
+#--------------------------------------------------------------#
+# Summary                                              [pg_done]
+#--------------------------------------------------------------#
+- name: pgsql init done
+  tags: pg_done
+  connection: local
+  debug:
+    msg: "postgres://{{ inventory_hostname }}{% if pg_port|int != 5432 %}:{{ pg_port }}{% endif %}/{{ pg_primary_db|default('postgres') }} | {% for db in pg_databases %}{{ db.name }} {% endfor %} | {% for user in pg_users %}{{ user.name }} {% endfor %}"
+
+...

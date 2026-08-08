@@ -1,0 +1,84 @@
+#!/bin/bash
+set -euo pipefail
+#==============================================================#
+# File      :   release
+# Desc      :   make pigsty release
+# Ctime     :   2021-04-20
+# Mtime     :   2026-01-27
+# Path      :   bin/release
+# License   :   Apache-2.0 @ https://pigsty.io/docs/about/license/
+# Copyright :   2018-2026  Ruohang Feng / Vonng (rh@vonng.com)
+#==============================================================#
+PROG_NAME="$(basename $0)"
+PROG_DIR="$(cd $(dirname $0) && pwd)"
+
+
+#--------------------------------------------------------------#
+# Param
+#--------------------------------------------------------------#
+# complete version string start with 'v'. e.g: v1.0.0
+# if default 'latest' is used, released source code will be generated @ dist/latest
+PIGSTY_VERSION=${1-'latest'}
+
+# pigsty home directory
+# output will be dist/latest/pigsty.tgz
+PIGSTY_HOME="$(cd $(dirname ${PROG_DIR}) && pwd)"
+RELEASE_DIR=${PIGSTY_HOME}/dist/
+DIR="${RELEASE_DIR}/${PIGSTY_VERSION}"
+
+
+#--------------------------------------------------------------#
+# source code dir
+#--------------------------------------------------------------#
+cd ${PIGSTY_HOME}
+mkdir -p "${DIR}"
+rm -rf "${DIR}/pigsty"
+mkdir -p "${DIR}/pigsty" "${DIR}/pigsty/files/bin" "${DIR}/pigsty/files/pki" "${DIR}/pigsty/vagrant" "${DIR}/pigsty/terraform" "${DIR}/pigsty/docker"
+mkdir ${DIR}/pigsty/files/pki/{ca,etcd,misc,infra,pgsql,redis,nginx,minio,mongo,mysql,csr}
+
+#--------------------------------------------------------------#
+# copy resources
+#--------------------------------------------------------------#
+cp -r ${PIGSTY_HOME}/{README.md,KEYS,LICENSE,NOTICE,Makefile,CLAUDE.md} "${DIR}/pigsty/"
+cp -r ${PIGSTY_HOME}/vagrant/{ssh,dns,spec,nuke,config,Vagrantfile.libvirt,Vagrantfile.virtualbox,Makefile,README.md} "${DIR}/pigsty/vagrant/"
+cp -r ${PIGSTY_HOME}/terraform/{README.md,terraform.tf,spec,ssh,Makefile} "${DIR}/pigsty/terraform/"
+cp -r ${PIGSTY_HOME}/docker/{Dockerfile,docker-compose.yml,.env,Makefile,README.md} "${DIR}/pigsty/docker/"
+cp -R ${PIGSTY_HOME}/files/{grafana,victoria,migration,postgres,*.sql} "${DIR}/pigsty/files/"
+cp -r ${PIGSTY_HOME}/app          "${DIR}/pigsty/" # copy pigsty app
+cp -r ${PIGSTY_HOME}/conf         "${DIR}/pigsty/" # copy pigsty conf
+cp -r ${PIGSTY_HOME}/{bin,roles}  "${DIR}/pigsty/" # copy scripts, playbooks
+cp -r ${PIGSTY_HOME}/ansible.cfg  "${DIR}/pigsty/" # copy ansible config
+cp -R ${PIGSTY_HOME}/templates    "${DIR}/pigsty/" # copy templates
+cp -r ${PIGSTY_HOME}/deploy.yml   "${DIR}/pigsty/" # copy deploy playbook
+cp -r ${PIGSTY_HOME}/node*.yml    "${DIR}/pigsty/" # copy node playbooks
+cp -r ${PIGSTY_HOME}/infra*.yml   "${DIR}/pigsty/" # copy infra playbooks
+cp -r ${PIGSTY_HOME}/pgsql*.yml   "${DIR}/pigsty/" # copy pgsql playbooks
+cp -r ${PIGSTY_HOME}/redis*.yml   "${DIR}/pigsty/" # copy redis playbooks
+cp -r ${PIGSTY_HOME}/etcd*.yml    "${DIR}/pigsty/" # copy etcd playbooks
+cp -r ${PIGSTY_HOME}/minio*.yml   "${DIR}/pigsty/" # copy minio playbooks
+cp -r ${PIGSTY_HOME}/mongo*.yml   "${DIR}/pigsty/" # copy mongo playbooks
+cp -r ${PIGSTY_HOME}/juice.yml    "${DIR}/pigsty/" # copy juice playbooks
+cp -r ${PIGSTY_HOME}/vibe.yml     "${DIR}/pigsty/" # copy vibe playbook
+cp -r ${PIGSTY_HOME}/cert.yml     "${DIR}/pigsty/" # copy cert playbook
+cp -r ${PIGSTY_HOME}/cache.yml    "${DIR}/pigsty/" # copy cache playbook
+cp -r ${PIGSTY_HOME}/docker.yml   "${DIR}/pigsty/" # copy docker playbook
+cp -r ${PIGSTY_HOME}/slim.yml     "${DIR}/pigsty/" # copy slim playbooks
+cp -r ${PIGSTY_HOME}/app.yml      "${DIR}/pigsty/" # copy app playbooks
+cp -r ${PIGSTY_HOME}/pigsty.yml   "${DIR}/pigsty/" # copy pigsty config
+cp -r ${PIGSTY_HOME}/.gitignore   "${DIR}/pigsty/" # copy .gitignore
+cp -r ${PIGSTY_HOME}/{bootstrap,configure} "${DIR}/pigsty/" # basic scripts
+
+rm -rf "${DIR}/pigsty/bin/__pycache__"             # remove py cache files
+rm -rf "${DIR}/pigsty/files/grafana/__pycache__"   # remove py cache files
+rm -rf "${DIR}/pigsty/conf/build/"                 # remove building file
+find "${DIR}/pigsty/" -type f -name .DS_Store -delete
+
+#--------------------------------------------------------------#
+# make tarball
+#--------------------------------------------------------------#
+if [[ "$(uname -s)" == "Darwin" ]]; then
+  cd ${DIR} && gtar cf - pigsty | gzip -9 > pigsty-${PIGSTY_VERSION}.tgz
+else
+  cd ${DIR} && tar cf - pigsty | gzip -9 > pigsty-${PIGSTY_VERSION}.tgz
+fi
+rm -rf ${DIR}/pigsty

@@ -1,0 +1,135 @@
+---
+#--------------------------------------------------------------#
+# Stage 1: Add /etc/profile/node.sh               [node_profile]
+#--------------------------------------------------------------#
+- name: write node etc profile
+  tags: node_profile
+  copy: src="node.sh" dest="/etc/profile.d/node.sh" mode=0644
+#--------------------------------------------------------------#
+# Stage 2: Add node aliases                         [node_alias]
+#--------------------------------------------------------------#
+- name: write node aliases
+  tags: node_alias
+  when: node_aliases is defined and node_aliases|length > 0
+  copy:
+    dest: /etc/profile.d/node.alias.sh
+    mode: 0644
+    content: |
+      #!/bin/bash
+      {% for k, v in node_aliases.items() %}
+      alias {{ k }}='{{ v }}'
+      {% endfor %}
+
+#--------------------------------------------------------------#
+# Stage 3: Add pip config                             [node_pip]
+#--------------------------------------------------------------#
+- name: write node pip config
+  tags: node_pip
+  when: region is defined and region == 'china'
+  copy:
+    dest: /etc/pip.conf
+    mode: 0644
+    content: |
+      [global]
+      index-url = https://pypi.tuna.tsinghua.edu.cn/simple
+      trusted-host = pypi.tuna.tsinghua.edu.cn
+
+#--------------------------------------------------------------#
+# Stage 4: Setup pam ulimit for node users         [node_ulimit]
+#--------------------------------------------------------------#
+- name: set pam ulimit
+  tags: node_ulimit
+  copy: src=limits.conf dest=/etc/security/limits.d/limits.conf mode=0644
+
+#--------------------------------------------------------------#
+# Stage 5: Create data dir if not exists             [node_data]
+#--------------------------------------------------------------#
+- name: assure node data dir exists
+  tags: node_data
+  when: node_data is defined and node_data != '' and node_data != '/'
+  file:
+    path: "{{ node_data }}"
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+
+#--------------------------------------------------------------#
+# Stage 6: Create default users/groups              [node_admin]
+#--------------------------------------------------------------#
+# always create admin group
+- name: create os user group admin
+  tags: node_admin
+  group: name=admin gid={{ node_admin_uid }}
+
+- name: create os node users and groups
+  tags: node_admin
+  when: node_admin_enabled
+  block:
+    # admin user , group, privileges
+    - name: create os user admin
+      user: name={{ node_admin_username }} uid={{ node_admin_uid }} home=/home/{{ node_admin_username }} shell=/bin/bash groups=admin generate_ssh_key=yes
+
+    - name: grant current admin user admin group
+      when: node_user is defined and node_user != '' and node_user != 'root' and node_user != node_admin_username
+      ignore_errors: true
+      shell: |
+        usermod -aG admin "{{ node_user | default('root') }}" || /bin/true;
+
+    # node_admin_sudo: all = require password, nopass = no password required, limit = limited commands
+    - name: grant admin user sudo privilege
+      copy:
+        dest: /etc/sudoers.d/{{ node_admin_username }}
+        mode: 0440
+        content: |
+          {% if node_admin_sudo == 'nopass' %}%admin ALL=(ALL) NOPASSWD: ALL
+          {% elif node_admin_sudo == 'all' %}%admin ALL=(ALL) ALL
+          {% elif node_admin_sudo == 'limit' %}%admin ALL=(ALL) NOPASSWD: /bin/systemctl, /usr/bin/journalctl, /bin/cat, /bin/less, /bin/tail, /bin/head
+          {% else %}# node_admin_sudo={{ node_admin_sudo }} not recognized, using nopass as default
+          %admin ALL=(ALL) NOPASSWD: ALL
+          {% endif %}
+
+    - name: touch admin user ssh config
+      copy: src=ssh.config dest=/home/{{ node_admin_username }}/.ssh/config mode=0600 owner={{ node_admin_username }} group=admin
+
+    - name: set ssh config no host checking
+      lineinfile:
+        path: /home/{{ node_admin_username }}/.ssh/config
+        regexp: '^StrictHostKeyChecking='
+        line: StrictHostKeyChecking=no
+
+    # admin ssh exchange among cluster
+    - name: fetch admin public keys
+      shell: cat /home/{{ node_admin_username }}/.ssh/id_rsa.pub
+      args: { executable: /bin/bash }
+      register: admin_ssh_keys
+
+    # for all hosts, copy their admin ssh public key to each other
+    - name: exchange all admin ssh keys
+      when: node_admin_ssh_exchange|bool
+      authorized_key: user={{ node_admin_username }} key="{{ item[0] }}"
+      ignore_errors: true
+      delegate_to: "{{ item[1] }}"
+      with_nested:
+        - "{{ [admin_ssh_keys.stdout] }}"
+        - "{{ ansible_play_hosts }}"
+
+    # add additional public keys
+    - name: add admin public keys
+      tags: node_admin_pk_list
+      when: node_admin_pk_list is defined and node_admin_pk_list|length > 0
+      authorized_key: user={{ node_admin_username }} key="{{ item }}"
+      ignore_errors: true
+      with_items:
+        - "{{ node_admin_pk_list }}"
+
+    # add current user public keys in ~/.ssh/id*.pub
+    - name: add current user public keys
+      tags: node_admin_pk_current
+      when: node_admin_pk_current|bool
+      authorized_key:
+        user: "{{ node_admin_username }}"
+        key: "{{ lookup('file', item) }}"
+      with_fileglob:
+        - "~/.ssh/id*.pub"
+...

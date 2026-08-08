@@ -1,0 +1,303 @@
+#!/usr/bin/python3
+# ==============================================================#
+# File      :   config
+# Desc      :   generate vagrantfile
+# Ctime     :   2024-07-05
+# Mtime     :   2026-02-10
+# Path      :   vagrant/config
+# License   :   Apache-2.0 @ https://pigsty.io/docs/about/license/
+# Copyright :   2018-2026  Ruohang Feng / Vonng (rh@vonng.com)
+# ==============================================================#
+# this script will generate vagrant/Vagrantfile base on parameters
+
+import os
+import sys
+import re
+import platform
+
+# Box selection matrix:
+#   BOXES[arch][provider][key] = "org/box"
+# Key set is intentionally "major-only":
+#   el8/el9/el10, d12/d13, u22/u24/u26
+BASE_BOXES = {
+    "el8":  "cloud-image/rocky-8",
+    "el9":  "cloud-image/rocky-9",
+    "el10": "cloud-image/rocky-10",
+    "d11":  "cloud-image/debian-11",
+    "d12":  "cloud-image/debian-12",
+    "d13":  "cloud-image/debian-13",
+    "u20":  "cloud-image/ubuntu-20.04",
+    "u22":  "cloud-image/ubuntu-22.04",
+    "u24":  "cloud-image/ubuntu-24.04",
+    "u26":  "cloud-image/ubuntu-26.04",
+}
+
+BOX_VERSION_PINS = {
+    "cloud-image/rocky-9": "9.7.20251123.2",
+    "cloud-image/rocky-10": "10.1.20251116.0",
+    "cloud-image/almalinux-9": "9.7.20260518",
+    "cloud-image/almalinux-10": "10.1.20260518.0",
+}
+
+BOXES = {
+    arch: {provider: dict(BASE_BOXES) for provider in ("virtualbox", "libvirt")}
+    for arch in ("amd64", "arm64")
+}
+
+# Direct aliases: explicitly choose a box by name (bypass BOXES matrix).
+DIRECT_BOX_ALIASES = {
+    # Cloud Image shortcuts
+    "r8": "cloud-image/rocky-8",
+    "r9": "cloud-image/rocky-9",
+    "r10": "cloud-image/rocky-10",
+
+    # EL vendor-specific
+    "rhel8": "generic/rhel8",
+    "rhel9": "generic/rhel9",
+    "alma8": "cloud-image/almalinux-8",
+    "alma9": "cloud-image/almalinux-9",
+    "alma10": "cloud-image/almalinux-10",
+    "oracle8": "generic/oracle8",
+    "oracle9": "generic/oracle9",
+}
+
+# Alias -> canonical image key (for BOXES matrix lookup).
+IMAGE_ALIASES = {
+    # Ubuntu
+    "ubuntu2004": "u20", "ubuntu20": "u20", "u20": "u20",
+    "ubuntu2204": "u22", "ubuntu22": "u22", "u22": "u22",
+    "ubuntu2404": "u24", "ubuntu24": "u24", "u24": "u24",
+    "ubuntu": "u24",
+    "ubuntu2604": "u26", "ubuntu26": "u26", "u26": "u26",
+
+    # Debian
+    "debian11": "d11", "deb11": "d11", "d11": "d11",
+    "debian12": "d12", "deb12": "d12", "d12": "d12",
+    "debian13": "d13", "deb13": "d13", "d13": "d13",
+
+    # EL
+    "el8": "el8", "rocky8": "el8",
+    "el9": "el9", "rocky9": "el9", "el": "el9",
+    "el10": "el10", "rocky10": "el10",
+}
+
+UNSUPPORTED_IMAGE_ALIASES = {
+    "ubuntu2004": "Ubuntu 20.04 is no longer supported; use u22, u24, or u26",
+    "ubuntu20": "Ubuntu 20.04 is no longer supported; use u22, u24, or u26",
+    "u20": "Ubuntu 20.04 is no longer supported; use u22, u24, or u26",
+    "debian11": "Debian 11 is no longer supported; use d12 or d13",
+    "deb11": "Debian 11 is no longer supported; use d12 or d13",
+    "d11": "Debian 11 is no longer supported; use d12 or d13",
+}
+
+# do not substitute image in building specs
+# these templates intentionally keep mixed distro matrices
+BUILD_SPECS = ["build", "all", "rpm", "deb", "oss", "pro"]
+
+ARGS = {
+    'spec': 'meta',
+    'scale': 1,
+    'provider': "virtualbox",
+}
+
+def detect_arch():
+    # Allow override: VM_ARCH / VM_ARCHITECTURE (amd64|arm64)
+    env_arch = os.environ.get("VM_ARCH") or os.environ.get("VM_ARCHITECTURE")
+    if env_arch:
+        a = env_arch.strip().lower()
+        if a in ("amd64", "x86_64"):
+            return "amd64"
+        if a in ("arm64", "aarch64"):
+            return "arm64"
+        print("[WARN] unknown VM_ARCH=%s, fallback to host arch" % env_arch)
+
+    m = platform.machine().strip().lower()
+    if m in ("x86_64", "amd64"):
+        return "amd64"
+    if m in ("arm64", "aarch64"):
+        return "arm64"
+    return "amd64"
+
+def resolve_box(image, provider, arch):
+    """
+    Resolve a short image alias (e.g. el9/d13/u24) into the best box name
+    based on (provider, arch).
+    """
+    if not image:
+        return image
+
+    img = str(image).strip()
+    if not img:
+        return img
+
+    # Explicit box name always wins (e.g. "cloud-image/rocky-9")
+    if "/" in img:
+        return img
+
+    key = img.lower()
+    if key in DIRECT_BOX_ALIASES:
+        return DIRECT_BOX_ALIASES[key]
+
+    key = IMAGE_ALIASES.get(key, key)
+    box = BOXES.get(arch, {}).get(provider, {}).get(key)
+    if box:
+        return box
+
+    # Fallback: provider-specific mapping under amd64 (helps when arch detection is odd)
+    box = BOXES.get("amd64", {}).get(provider, {}).get(key)
+    if box:
+        print("[WARN] no mapping for arch=%s provider=%s key=%s, fallback to amd64" % (arch, provider, key))
+        return box
+
+    print("[WARN] unknown image alias: %s (arch=%s provider=%s)" % (img, arch, provider))
+    return img
+
+def apply_box_version_pin(line):
+    image_matches = re.findall('"image"\\s*=>\\s*"([^"]+)"', line)
+    if not image_matches:
+        return line
+
+    box_version = BOX_VERSION_PINS.get(image_matches[0])
+    line = re.sub('\\s*,\\s*"box_version"\\s*=>\\s*"[^"]+"', '', line)
+    if not box_version:
+        return line
+
+    return re.sub('\\s*}\\s*,?\\s*$', ', "box_version" => "%s" },\n' % box_version, line)
+
+def usage():
+    print("Usage: %s [spec] [image] [scale] [provider]" % sys.argv[0])
+    print("  [VM_SPEC]     spec:    meta, full, simu, dual, trio, oss, pro, rpm, deb, all...")
+    print("  [VM_IMAGE]    image:   el8, el9, el10, d11, d12, d13, u20, u22, u24, u26 (or an explicit box name)")
+    print("  [VM_SCALE]    scale:   1, 2, 3, ...")
+    print("  [VM_PROVIDER] provider: virtualbox, libvirt")
+    print("  [VM_ARCH]     arch:    amd64, arm64 (optional, default = host arch)")
+    sys.exit(1)
+
+def parse_arg():
+    # check environment variables first
+    if 'VM_SPEC' in os.environ:
+        ARGS['spec'] = os.environ['VM_SPEC']
+    if 'VM_IMAGE' in os.environ:
+        ARGS['image'] = os.environ['VM_IMAGE']
+    if 'VM_SCALE' in os.environ:
+        ARGS['scale'] = int(os.environ['VM_SCALE'])
+    if 'VM_PROVIDER' in os.environ:
+        ARGS['provider'] = os.environ['VM_PROVIDER']
+
+    if len(sys.argv) > 1:
+        ARGS['spec'] = sys.argv[1]
+    if len(sys.argv) > 2:
+        ARGS['image'] = sys.argv[2]
+    if len(sys.argv) > 3:
+        ARGS['scale'] = int(sys.argv[3])
+    if len(sys.argv) > 4:
+        ARGS['provider'] = sys.argv[4]
+
+    ARGS['arch'] = detect_arch()
+    if 'image' in ARGS:
+        ARGS['image'] = resolve_box(ARGS['image'], ARGS['provider'], ARGS['arch'])
+
+    if ARGS['spec'] in ['simu', 'deci']:
+        ARGS['scale'] = 1  # do not scale simu template
+
+    print(
+        "[INFO] spec=%s image=%s scale=%d provider=%s arch=%s" % (ARGS['spec'], ARGS.get('image'), ARGS['scale'], ARGS['provider'], ARGS['arch']))
+
+    return ARGS
+
+
+def get_spec(spec_name):
+    vagrant_dir = os.path.dirname(os.path.realpath(__file__))
+    spec_path = os.path.join(vagrant_dir, 'spec', '%s.rb' % spec_name)
+
+    # raise error if spec file not found
+    if not os.path.exists(spec_path):
+        print("[ERRR] spec %s not found" % (spec_name))
+        sys.exit(1)
+
+    modified_specs = []
+    with open(spec_path, 'r') as f:
+        lines = f.readlines()
+
+    print("[INFO] get %s spec from %s" % (spec_name, spec_path))
+    total_cpu = 0
+    total_mem = 0
+    scale_factor = int(ARGS['scale'])
+    if scale_factor < 1 or scale_factor > 64:
+        print("[ERRR] scale factor should be in range [1, 64]")
+        sys.exit(1)
+    for line in lines:
+        line2 = line.lstrip().rstrip()
+        if line2.startswith('{'):  # this is a node definition line
+            try:
+                name = re.findall('"name"\\s*=>\\s*"([^"]+)"', line)[0]
+                cpu = int(re.findall('"cpu"\\s*=>\\s*"([^"]+)"', line)[0])
+                mem = int(re.findall('"mem"\\s*=>\\s*"([^"]+)"', line)[0])
+                if 'image' in ARGS:
+                    image = re.findall('"image"\\s*=>\\s*"([^"]+)"', line)[0]
+
+                new_cpu = scale_factor * cpu
+                new_mem = scale_factor * mem
+                total_cpu += new_cpu
+                total_mem += new_mem
+            except:
+                print("[ERRR] failed to parse cpu, mem, image from line: %s" % line)
+                sys.exit(1)
+
+            # if found, replace these fields
+            line = re.sub('"cpu"\\s*=>\\s*"([^"]+)"', '"cpu" => "%d"' % new_cpu, line)
+            line = re.sub('"mem"\\s*=>\\s*"([^"]+)"', '"mem" => "%d"' % new_mem, line)
+            if ARGS['spec'] not in BUILD_SPECS and 'image' in ARGS:
+                line = re.sub('"image"\\s*=>\\s*"([^"]+)"', '"image" => "%s"' % ARGS['image'], line)
+            line = apply_box_version_pin(line)
+        modified_specs.append(line)
+
+    if scale_factor != 1:
+        print("[INFO] total_cpu = %d, total_mem = %d GiB [scale factor = %d]" % (
+            total_cpu, total_mem / 1024, scale_factor))
+    else:
+        print("[INFO] total_cpu = %d, total_mem = %d GiB " % (total_cpu, total_mem / 1024))
+    return ''.join(modified_specs)
+
+
+def get_provider(provider):
+    vagrant_dir = os.path.dirname(os.path.realpath(__file__))
+    provider_path = os.path.join(vagrant_dir, 'Vagrantfile.%s' % provider)
+
+    # raise error if provider file not found
+    if not os.path.exists(provider_path):
+        print("[ERRR] provider %s not supported" % (provider))
+        sys.exit(2)
+
+    with open(provider_path, 'r') as f:
+        return f.read()
+
+
+def get_conf():
+    spec_conf = get_spec(ARGS['spec'])
+    provider_conf = get_provider(ARGS['provider'])
+    print('[SPEC]\n')
+    print(spec_conf)
+    print('\n')
+    return "%s\n\n%s" % (spec_conf, provider_conf)
+
+
+def write_conf(content):
+    vagrantfile_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'Vagrantfile')
+    try:
+        with open(vagrantfile_path, 'w') as f:
+            f.write(content)
+        print("[INFO] write config to %s" % vagrantfile_path)
+    except:
+        print("[ERRR] write config to %s" % vagrantfile_path)
+
+
+def main():
+    print("[INFO] generate vagrant config")
+    parse_arg()
+    conf = get_conf()
+    write_conf(conf)
+
+
+if __name__ == '__main__':
+    main()

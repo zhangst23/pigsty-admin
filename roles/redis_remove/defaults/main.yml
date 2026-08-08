@@ -1,0 +1,18 @@
+---
+#-----------------------------------------------------------------
+# REDIS_REMOVE
+#-----------------------------------------------------------------
+redis_safeguard: false            # prevent purging running redis instance?
+redis_rm_data: true               # remove redis data dir? (/data/redis/...)
+redis_rm_pkg: false               # uninstall redis & redis_exporter packages?
+
+#-----------------------------------------------------------------
+# REDIS (REFERENCE)
+#-----------------------------------------------------------------
+redis_fs_main: /data/redis        # main data directory for redis
+
+#-----------------------------------------------------------------
+# VECTOR (Reference)
+#-----------------------------------------------------------------
+vector_enabled: true              # enable vector log collector?
+...

@@ -1,0 +1,62 @@
+---
+data_dir: {{ vector_data }}
+
+api:
+  enabled: true
+
+sources:
+  # vector internal metrics
+  internal_metrics:
+    type: internal_metrics
+    scrape_interval_secs: 15
+
+sinks:
+  # expose metrics (internal + custom) to victoria metrics
+  vmetrics:
+    type: prometheus_exporter
+    inputs: ["*_metrics"]
+    address: 0.0.0.0:{{ vector_port }}
+    default_namespace: vector
+
+{#- Build log receivers list based on vector_log_endpoint configuration -#}
+{%- set log_receivers = [] -%}
+{%- if vector_log_endpoint | default([]) | length > 0 -%}
+  {%- if vector_log_endpoint | length == 1 and vector_log_endpoint[0] == 'infra' -%}
+    {%- for host in groups['infra'] | default([]) -%}
+      {%- set vlogs_on = hostvars[host]['vlogs_enabled'] | default(true) | bool -%}
+      {%- if vlogs_on -%}
+        {%- set port = hostvars[host]['vlogs_port'] | default(9428) -%}
+        {%- set _ = log_receivers.append('http://' ~ host ~ ':' ~ port ~ '/insert/jsonline') -%}
+      {%- endif -%}
+    {%- endfor -%}
+  {%- else -%}
+    {%- for endpoint in vector_log_endpoint -%}
+      {%- set _ = log_receivers.append(endpoint | replace('${admin_ip}', admin_ip)) -%}
+    {%- endfor -%}
+  {%- endif -%}
+{%- endif -%}
+{% if log_receivers | length > 0 %}
+  # send logs to victoria logs receivers
+{% for receiver in log_receivers %}
+  vlogs{{ loop.index if log_receivers | length > 1 else '' }}:
+    type: http
+    inputs: ["*_logs"]
+    uri: {{ receiver }}
+    encoding:
+      codec: json
+    framing:
+      method: newline_delimited
+    compression: gzip
+    healthcheck:
+      enabled: false
+    request:
+      headers:
+        VL-Stream-Fields: job,ins,ip
+        VL-Msg-Field: message
+        VL-Time-Field: _time
+        VL-Ignore-Fields: timestamp,file
+        AccountID: "0"
+        ProjectID: "0"
+{% endfor %}
+{% endif %}
+...

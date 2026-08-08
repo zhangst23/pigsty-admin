@@ -1,0 +1,54 @@
+---
+#--------------------------------------------------------------#
+# VIBE                              https://pigsty.io/docs/vibe
+#--------------------------------------------------------------#
+# vibe is an integrated module for development tools:
+#   - code:   code-server (VS Code in browser)
+#   - jupyter: JupyterLab for interactive computing
+#   - claude: Claude Code CLI with OTEL observability
+#   - codex:  optional Codex CLI package install only
+#--------------------------------------------------------------#
+
+#--------------------------------------------------------------#
+# VIBE - Common Settings
+#--------------------------------------------------------------#
+vibe_data: /fs                    # vibe workspace directory
+
+#--------------------------------------------------------------#
+# CODE - VS Code Server
+#--------------------------------------------------------------#
+code_enabled: true                # enable code-server installation
+code_port: 8443                   # code-server listen port
+code_data: /data/code             # code-server user data directory
+code_password: Vibe.Coding        # code-server password
+code_gallery: 'openvsx'           # extension gallery: openvsx|microsoft
+
+#--------------------------------------------------------------#
+# JUPYTER - JupyterLab
+#--------------------------------------------------------------#
+jupyter_enabled: false            # jupyter disabled by default, enable in conf/vibe.yml
+jupyter_port: 8888                # jupyter lab listen port
+jupyter_data: /data/jupyter       # jupyter lab data directory
+jupyter_password: Vibe.Coding     # jupyter lab access token
+jupyter_venv: /data/venv          # python venv path with jupyter
+
+#--------------------------------------------------------------#
+# NODEJS - Node.js Runtime
+#--------------------------------------------------------------#
+nodejs_enabled: true              # install standalone nodejs runtime task (agents install it on demand)
+nodejs_registry: ''               # npm registry, auto china mirror if empty
+npm_packages: []                  # optional extra global npm packages
+
+#--------------------------------------------------------------#
+# CLAUDE - Claude Code CLI Configuration
+#--------------------------------------------------------------#
+claude_enabled: true              # install and configure claude code cli
+claude_package: '@anthropic-ai/claude-code' # npm package used to install claude code
+claude_env: {}                    # extra env vars to merge with otel defaults
+
+#--------------------------------------------------------------#
+# CODEX - Codex CLI Package
+#--------------------------------------------------------------#
+codex_enabled: true               # install codex cli package only
+
+...

@@ -1,0 +1,56 @@
+#!/usr/bin/env ansible-playbook
+---
+#==============================================================#
+# File      :   node-rm.yml
+# Desc      :   remove node from pigsty
+# Ctime     :   2022-02-22
+# Mtime     :   2026-01-14
+# Path      :   node-rm.yml
+# Docs      :   https://pigsty.io/docs/node/playbook#node-rmyml
+# License   :   Apache-2.0 @ https://pigsty.io/docs/about/license/
+# Copyright :   2018-2026  Ruohang Feng / Vonng (rh@vonng.com)
+#==============================================================#
+- name: NODE REMOVE
+  become: true
+  hosts: all
+  gather_facts: no
+  ignore_errors: true
+  roles: [ { role: node_id }, { role: node_remove } ]
+
+
+#--------------------------------------------------------------#
+# Usage
+#--------------------------------------------------------------#
+#
+#  Remove node cluster `pg-test`
+#     node-rm.yml -l pg-test
+#
+#  Remove node instance `10.10.10.11`
+#     node-rm.yml -l 10.10.10.11
+#
+#--------------------------------------------------------------#
+# Utils
+#--------------------------------------------------------------#
+#
+#  bin/node-rm pg-meta               # remove nodes of group `pg-meta`
+#  bin/node-rm pg-meta pg-test       # remove multiple node groups
+#  bin/node-rm 10.10.10.10           # remove node with ip `10.10.10.10`
+#  bin/node-rm 10.10.10.1*           # remove node with pattern `10.10.10.1*`
+#  bin/node-rm 1.2.3.4 5.6.7.8       # remove multiple nodes
+#
+#--------------------------------------------------------------#
+# Tasks
+#--------------------------------------------------------------#
+# node_deregister  : remove register from victoria & nginx
+#   - rm_metrics   : remove registered victoria monitor target
+#   - rm_logs      : remove node log collector config from vector
+# haproxy_register : remove nginx proxy record for haproxy admin
+# vip              : remove node keepalived if enabled
+# haproxy          : remove haproxy load balancer
+# node_exporter    : remove monitoring exporter
+# vip_exporter     : remove keepalived_exporter if enabled
+# vector           : remove vector log agent
+# node_crontab     : restore default /etc/crontab
+# profile          : remove /etc/profile.d/node.sh,node.alias.sh
+#--------------------------------------------------------------#
+...

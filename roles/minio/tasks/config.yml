@@ -1,0 +1,128 @@
+---
+#--------------------------------------------------------------#
+# Config MinIO                                      [minio_conf]
+#--------------------------------------------------------------#
+- name: render minio config
+  tags: minio_conf
+  template: src={{ item.src }} dest={{ item.dest }} owner={{ item.owner }} group={{ item.group }} mode={{ item.mode }}
+  loop:
+    - { src: "minio.env" ,dest: "/etc/default/minio"              ,owner: root ,group: minio ,mode: '0640' }
+    - { src: "minio.svc" ,dest: "{{ systemd_dir }}/minio.service" ,owner: root ,group: root  ,mode: '0644' }
+
+
+#--------------------------------------------------------------#
+# Issue MinIO Certs                           [minio_cert_issue]
+#--------------------------------------------------------------#
+- name: generate certs for minio
+  tags: [ minio_cert, minio_cert_issue ]
+  when: minio_https|bool
+  become: false
+  connection: local
+  vars:
+    ansible_python_interpreter: "{{ ansible_playbook_python }}"
+  block:
+
+    # reuse the existing private key if already exists
+    - name: generate minio private key
+      openssl_privatekey:
+        path: files/pki/minio/{{ minio_instance }}.key
+        mode: 0600
+
+    - name: generate minio server signing request
+      openssl_csr:
+        path: "files/pki/csr/{{ minio_instance }}.csr"
+        privatekey_path: "files/pki/minio/{{ minio_instance }}.key"
+        common_name: "{{ minio_nodename }}"
+        organization_name: pigsty
+        organizational_unit_name: minio
+        subject_alt_name:
+          - "DNS:localhost"
+          - "DNS:{{ minio_nodename }}"
+          - "DNS:{{ minio_cluster }}"
+          - "DNS:{{ minio_cluster }}-{{ minio_seq }}"
+          - "DNS:{{ minio_domain }}"
+          - IP:127.0.0.1
+          - "IP:{{ inventory_hostname }}"
+
+    - name: issue minio server certificate
+      openssl_certificate:
+        path: "files/pki/minio/{{ minio_instance }}.crt"
+        csr_path: "files/pki/csr/{{ minio_instance }}.csr"
+        provider: ownca
+        ownca_path: files/pki/ca/ca.crt
+        ownca_privatekey_path: files/pki/ca/ca.key
+        ownca_not_after: "+{{ cert_validity }}"
+        mode: 0644
+
+
+#--------------------------------------------------------------#
+# Copy MinIO Certs                             [minio_cert_copy]
+#--------------------------------------------------------------#
+- name: copy minio certs
+  tags: [ minio_cert, minio_cert_copy ]
+  become: true
+  block:
+    - name: create minio cert dir
+      when: minio_https|bool
+      file: path=/home/{{ minio_user }}/.minio/certs/CAs state=directory owner={{ minio_user }} group=minio mode=0750
+
+    - name: copy minio certificates
+      when: minio_https|bool
+      copy: src={{ item.src }} dest={{ item.dest }} owner={{ item.owner }} group={{ item.group|default(item.owner) }} mode={{ item.mode }}
+      loop:
+        - { src: "files/pki/ca/ca.crt"                       ,dest: "/home/{{ minio_user }}/.minio/certs/CAs/ca.crt"  ,owner: "{{ minio_user }}", group: "minio" ,mode: "0644" }
+        - { src: "files/pki/minio/{{ minio_instance }}.crt"  ,dest: "/home/{{ minio_user }}/.minio/certs/public.crt"  ,owner: "{{ minio_user }}", group: "minio" ,mode: "0644" }
+        - { src: "files/pki/minio/{{ minio_instance }}.key"  ,dest: "/home/{{ minio_user }}/.minio/certs/private.key" ,owner: "{{ minio_user }}", group: "minio" ,mode: "0600" }
+
+    - name: disable minio https by removing certs
+      when: not minio_https|bool
+      file: path=/home/{{ minio_user }}/.minio/certs state=absent
+
+
+#--------------------------------------------------------------#
+# Write MinIO DNS Entry                              [minio_dns]
+#--------------------------------------------------------------#
+# add minio cluster static dns entries to /etc/hosts
+- name: write minio instance dns to local dns records
+  when: node_write_etc_hosts|default(true)|bool
+  tags: [ minio_dns , minio_dns_local ]
+  block:
+
+    - name: wipe minio dns entries
+      lineinfile: path=/etc/hosts regexp='# minio dns$' state=absent
+
+    # NOTE: dns records written by pigsty will be suffixed with "# minio dns" mark
+    - name: write static etc hosts entry
+      lineinfile:
+        path: /etc/hosts
+        line: "{{ item.strip() }} # minio dns"
+      loop: "{{ minio_member.split(',') }}"
+
+# add minio cluster static dns entries to infra nameserver
+# render to temp file first, then atomic mv to avoid dnsmasq inotify race
+- name: render minio instance dns to infra nameserver
+  tags: [ minio_dns, register, add_dns ]
+  delegate_to: '{{ item }}'
+  loop: "{{ groups['infra'] | default([]) }}"
+  ignore_errors: true
+  copy:
+    dest: /etc/dnsmasq.d/pigsty/.{{ minio_instance }}.tmp
+    mode: 0644
+    owner: root
+    group: root
+    content: |
+      {{ inventory_hostname }} {{ minio_nodename }}
+      {{ inventory_hostname }} {{ minio_cluster }}-{{ minio_seq }}
+  register: minio_dns_render
+
+- name: activate minio instance dns on infra nameserver
+  tags: [ minio_dns, register, add_dns ]
+  delegate_to: '{{ item }}'
+  loop: "{{ groups['infra'] | default([]) }}"
+  when:
+    - minio_dns_render is defined
+    - minio_dns_render is succeeded
+  ignore_errors: true
+  command: mv /etc/dnsmasq.d/pigsty/.{{ minio_instance }}.tmp /etc/dnsmasq.d/pigsty/{{ minio_instance }}
+
+...

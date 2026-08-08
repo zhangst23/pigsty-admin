@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Supabase Demo</title>
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+</head>
+<body>
+<h1>Supabase: the Hello World Demo</h1>
+<h3>Javascript Snippet Demo</h3>
+<code>
+    <p>const supabaseUrl = 'http://supa.pigsty';</p>
+    <p>const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyAgCiAgICAicm9sZSI6ICJzZXJ2aWNlX3JvbGUiLAogICAgImlzcyI6ICJzdXBhYmFzZS1kZW1vIiwKICAgICJpYXQiOiAxNjQxNzY5MjAwLAogICAgImV4cCI6IDE3OTk1MzU2MDAKfQ.DaYlNEoUrrEn2Ig7tqibS-PHK5vgusbcbo7X36XVt4Q';</p>
+    <p>const client = supabase.createClient(supabaseUrl, supabaseKey);</p>
+</code>
+<h3>Create sample table in supabase console</h3>
+<code><p>create table countries (id int8 primary key, name text); insert into countries (id, name) values (1, 'USA'); -- do this in supabase console</p><br></code>
+
+<h3>Async Fetch Results</h3>
+<div id="data"></div>
+<script>
+    const supabaseUrl = 'http://supa.pigsty';
+    const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyAgCiAgICAicm9sZSI6ICJzZXJ2aWNlX3JvbGUiLAogICAgImlzcyI6ICJzdXBhYmFzZS1kZW1vIiwKICAgICJpYXQiOiAxNjQxNzY5MjAwLAogICAgImV4cCI6IDE3OTk1MzU2MDAKfQ.DaYlNEoUrrEn2Ig7tqibS-PHK5vgusbcbo7X36XVt4Q';
+
+    const sb = supabase.createClient(supabaseUrl, supabaseKey);
+    async function fetchData() {
+        try {
+            const { data, error } = await sb.from('countries').select();
+            if (error) {
+                console.error('Error:', error);
+                document.getElementById('data').textContent = 'Error fetching data';
+            } else {
+                document.getElementById('data').textContent = JSON.stringify(data, null, 2);
+            }
+        } catch (err) {
+            console.error('Unexpected error:', err);
+            document.getElementById('data').textContent = 'Unexpected error occurred';
+        }
+    }
+    fetchData();
+</script>
+</body>
+</html>

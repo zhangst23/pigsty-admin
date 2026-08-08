@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Pigsty is installing...">
+    <title>Pigsty {{ version }} - Installing</title>
+    <style>
+        :root {
+            --color-primary: #0f4c81;
+            --color-primary-dark: #0a3a64;
+            --color-primary-light: #1a6bb5;
+            --color-bg: #f8fafc;
+            --color-surface: #ffffff;
+            --color-border: #e2e8f0;
+            --color-text: #1e293b;
+            --color-text-secondary: #64748b;
+            --color-text-muted: #94a3b8;
+            --color-warning: #f59e0b;
+            --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            --font-mono: "SF Mono", "Fira Code", "Fira Mono", Menlo, Monaco, Consolas, monospace;
+            --space-sm: 0.5rem;
+            --space-md: 1rem;
+            --space-lg: 1.5rem;
+            --space-xl: 2rem;
+            --space-2xl: 3rem;
+            --radius-md: 8px;
+            --radius-lg: 12px;
+            --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+            --transition-fast: 150ms ease;
+            --transition-base: 200ms ease;
+        }
+
+        *, *::before, *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        html {
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        body {
+            font-family: var(--font-sans);
+            font-size: 16px;
+            line-height: 1.6;
+            color: var(--color-text);
+            background-color: var(--color-bg);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        a {
+            color: inherit;
+            text-decoration: none;
+            transition: color var(--transition-fast);
+        }
+
+        .container {
+            width: 100%;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 var(--space-lg);
+        }
+
+        /* Header */
+        .header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--color-border);
+        }
+
+        .header-inner {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            height: 64px;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: var(--space-sm);
+            font-weight: 700;
+            font-size: 1.25rem;
+            color: var(--color-primary);
+            letter-spacing: 0.05em;
+        }
+
+        .logo-icon {
+            width: 28px;
+            height: 28px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .logo-icon svg {
+            width: 100%;
+            height: 100%;
+        }
+
+        .nav {
+            display: flex;
+            align-items: center;
+            gap: var(--space-xl);
+        }
+
+        .nav-link {
+            font-size: 0.9375rem;
+            font-weight: 500;
+            color: var(--color-text-secondary);
+            padding: var(--space-sm) 0;
+        }
+
+        .nav-link:hover {
+            color: var(--color-primary);
+        }
+
+        /* Main Content */
+        .main {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding-top: 64px;
+            padding-bottom: var(--space-2xl);
+        }
+
+        .content {
+            text-align: center;
+            max-width: 600px;
+            padding: var(--space-2xl);
+        }
+
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: var(--space-sm);
+            padding: var(--space-sm) var(--space-lg);
+            background: rgba(245, 158, 11, 0.1);
+            border: 1px solid rgba(245, 158, 11, 0.3);
+            border-radius: 9999px;
+            font-size: 0.875rem;
+            color: var(--color-warning);
+            margin-bottom: var(--space-xl);
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            background: var(--color-warning);
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .title {
+            font-size: 2.5rem;
+            font-weight: 800;
+            color: var(--color-text);
+            margin-bottom: var(--space-md);
+            letter-spacing: -0.02em;
+        }
+
+        .title-accent {
+            background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-light) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .subtitle {
+            font-size: 1.125rem;
+            color: var(--color-text-secondary);
+            margin-bottom: var(--space-lg);
+        }
+
+        .info-card {
+            background: var(--color-surface);
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-lg);
+            padding: var(--space-lg) var(--space-xl);
+            margin-bottom: var(--space-xl);
+            box-shadow: var(--shadow-md);
+        }
+
+        .info-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: var(--space-sm) 0;
+        }
+
+        .info-row:not(:last-child) {
+            border-bottom: 1px solid var(--color-border);
+        }
+
+        .info-label {
+            font-size: 0.875rem;
+            color: var(--color-text-muted);
+        }
+
+        .info-value {
+            font-family: var(--font-mono);
+            font-size: 0.9375rem;
+            color: var(--color-text);
+            font-weight: 500;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: var(--space-sm);
+            padding: 0.875rem 1.75rem;
+            font-size: 1rem;
+            font-weight: 600;
+            border-radius: var(--radius-md);
+            transition: all var(--transition-fast);
+            cursor: pointer;
+            border: none;
+            background: var(--color-primary);
+            color: white;
+            box-shadow: 0 4px 14px 0 rgba(15, 76, 129, 0.3);
+        }
+
+        .btn:hover {
+            background: var(--color-primary-dark);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px 0 rgba(15, 76, 129, 0.4);
+        }
+
+        .btn-icon {
+            width: 20px;
+            height: 20px;
+        }
+
+        /* Footer */
+        .footer {
+            background: var(--color-text);
+            color: white;
+            padding: var(--space-lg) 0;
+        }
+
+        .footer-inner {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 0.875rem;
+            color: rgba(255, 255, 255, 0.5);
+        }
+
+        .footer-logo {
+            display: flex;
+            align-items: center;
+            gap: var(--space-sm);
+            font-weight: 700;
+            font-size: 1rem;
+            color: white;
+            letter-spacing: 0.05em;
+        }
+
+        .footer-logo-icon {
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .footer-logo-icon svg {
+            width: 100%;
+            height: 100%;
+        }
+
+        .footer-link {
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        .footer-link:hover {
+            color: white;
+        }
+
+        @media (max-width: 768px) {
+            .nav {
+                display: none;
+            }
+
+            .title {
+                font-size: 1.75rem;
+            }
+
+            .content {
+                padding: var(--space-lg);
+            }
+
+            .footer-inner {
+                flex-direction: column;
+                gap: var(--space-md);
+                text-align: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="container">
+            <div class="header-inner">
+                <a href="/" class="logo">
+                    <span class="logo-icon">
+                        <svg viewBox="24 15 25 27" xmlns="http://www.w3.org/2000/svg">
+                            <g fill="none" stroke="white" stroke-linecap="round" stroke-linejoin="round" stroke-width=".75">
+                                <path d="M31.73 28.43l2.4-4.15h4.8l2.4 4.15-2.4 4.15h-4.8z" fill="#bbb" fill-opacity=".95"/>
+                                <path d="M31.73 36.74l2.4-4.15h4.8l2.4 4.15-2.4 4.15h-4.8z" fill="#de372c" fill-opacity=".85"/>
+                                <path d="M38.93 32.61l2.4-4.15h4.8l2.4 4.15-2.4 4.15h-4.8z" fill="#424242" fill-opacity=".9"/>
+                                <path d="M38.93 24.28l2.4-4.15h4.8l2.4 4.15-2.4 4.15h-4.8z" fill="#ffa269" fill-opacity=".9"/>
+                                <path d="M31.73 20.15l2.4-4.15h4.8l2.4 4.15-2.4 4.15h-4.8z" fill="#419edb" fill-opacity=".9"/>
+                                <path d="M24.52 24.28l2.4-4.15h4.8l2.4 4.15-2.4 4.15h-4.8z" fill="#2f6793" fill-opacity=".9"/>
+                                <path d="M24.55 32.6l2.4-4.15h4.8l2.4 4.15-2.4 4.15h-4.8z" fill="#53ac79" fill-opacity=".9"/>
+                            </g>
+                        </svg>
+                    </span>
+                    <span>PIGSTY</span>
+                </a>
+                <nav class="nav">
+                    <a href="https://pigsty.io/docs" class="nav-link">Docs</a>
+                    <a href="https://github.com/pgsty/pigsty" class="nav-link">GitHub</a>
+                </nav>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main">
+        <div class="content">
+            <div class="status-badge">
+                <span class="status-dot"></span>
+                <span>Installing</span>
+            </div>
+            <h1 class="title">
+                <span class="title-accent">Pigsty</span> is being installed
+            </h1>
+            <p class="subtitle">
+                Please wait while the installation completes.
+            </p>
+            <div class="info-card">
+                <div class="info-row">
+                    <span class="info-label">Admin Node</span>
+                    <span class="info-value">{{ admin_ip }}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Version</span>
+                    <span class="info-value">{{ version }}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Repository</span>
+                    <span class="info-value">{{ repo_name }}</span>
+                </div>
+            </div>
+            <a href="/pigsty/" class="btn">
+                <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M16.5 9.4l-9-5.19M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+                    <polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
+                    <line x1="12" y1="22.08" x2="12" y2="12"/>
+                </svg>
+                Software Repository
+            </a>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-inner">
+                <div class="footer-logo">
+                    <span class="footer-logo-icon">
+                        <svg viewBox="24 15 25 27" xmlns="http://www.w3.org/2000/svg">
+                            <g fill="none" stroke="white" stroke-linecap="round" stroke-linejoin="round" stroke-width=".75">
+                                <path d="M31.73 28.43l2.4-4.15h4.8l2.4 4.15-2.4 4.15h-4.8z" fill="#bbb" fill-opacity=".95"/>
+                                <path d="M31.73 36.74l2.4-4.15h4.8l2.4 4.15-2.4 4.15h-4.8z" fill="#de372c" fill-opacity=".85"/>
+                                <path d="M38.93 32.61l2.4-4.15h4.8l2.4 4.15-2.4 4.15h-4.8z" fill="#424242" fill-opacity=".9"/>
+                                <path d="M38.93 24.28l2.4-4.15h4.8l2.4 4.15-2.4 4.15h-4.8z" fill="#ffa269" fill-opacity=".9"/>
+                                <path d="M31.73 20.15l2.4-4.15h4.8l2.4 4.15-2.4 4.15h-4.8z" fill="#419edb" fill-opacity=".9"/>
+                                <path d="M24.52 24.28l2.4-4.15h4.8l2.4 4.15-2.4 4.15h-4.8z" fill="#2f6793" fill-opacity=".9"/>
+                                <path d="M24.55 32.6l2.4-4.15h4.8l2.4 4.15-2.4 4.15h-4.8z" fill="#53ac79" fill-opacity=".9"/>
+                            </g>
+                        </svg>
+                    </span>
+                    <span>PIGSTY</span>
+                </div>
+                <span>Pigsty {{ version }} &copy; 2018-2026 <a href="https://vonng.com/en/" class="footer-link">Ruohang Feng</a></span>
+            </div>
+        </div>
+    </footer>
+</body>
+</html>

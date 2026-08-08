@@ -1,0 +1,78 @@
+#!/usr/bin/env ansible-playbook
+---
+#==============================================================#
+# File      :   pgsql-rm.yml
+# Desc      :   remove pgsql from hosts
+# Ctime     :   2020-05-12
+# Mtime     :   2026-01-14
+# Path      :   pgsql-rm.yml
+# Docs      :   https://pigsty.io/docs/pgsql/playbook
+# License   :   Apache-2.0 @ https://pigsty.io/docs/about/license/
+# Copyright :   2018-2026  Ruohang Feng / Vonng (rh@vonng.com)
+#==============================================================#
+- name: PGSQL REMOVE
+  become: true
+  hosts: all
+  gather_facts: no
+  ignore_errors: true
+  vars:
+    #pg_safeguard: true                # safeguard for pgsql remove, set to true halt remove execution
+    #pg_rm_data: true                  # remove postgres data during remove? true by default
+    #pg_rm_backup: true                # remove pgbackrest backup during primary remove? true by default
+    #pg_rm_pkg: true                   # uninstall postgres packages during remove? true by default
+  roles: [ { role: node_id }, { role: pg_remove } ]
+
+
+#--------------------------------------------------------------#
+# Usage
+#--------------------------------------------------------------#
+#  Remove pgsql cluster `pg-test`
+#     pgsql-rm.yml -l pg-test    # remove cluster `pg-test`
+#         -e pg_rm_data=true     # remove postgres data by default
+#         -e pg_rm_backup=true   # remove postgres backup by default (when removing primary)
+#         -e pg_rm_pkg=false     # do not uninstall pg packages by default, explicit override required
+#         -e pg_safeguard=false  # safeguard is not enabled by default, if enabled, can be override with cli args
+#  It will abort if `pg_safeguard` is set to `true` explicitly
+#
+#  Remove a pgsql replica:
+#     pgsql-rm.yml -l 10.10.10.13   # remove instance `10.10.10.13` from cluster `pg-test`
+#     pgsql.yml -l pg-test --tags=pg_service  # refresh pg service after cluster shrink
+#
+#--------------------------------------------------------------#
+# Utils
+#--------------------------------------------------------------#
+#
+#  bin/pgsql-rm pg-meta             # remove pgsql cluster 'pg-meta'
+#  bin/pgsql-rm pg-test 10.10.10.13 # remove pgsql instance '10.10.10.13' from 'pg-test'
+#
+#--------------------------------------------------------------#
+# Tasks
+#--------------------------------------------------------------#
+# pg_monitor               : remove registration from victoria, grafana, nginx
+#   pg_deregister          : remove pg monitoring targets from infra
+#   - rm_metrics           : remove monitor target from victoria
+#   - rm_ds                : remove datasource from grafana
+#   - rm_logs              : remove logging target from vector
+#   - pg_exporter          : remove pg_exporter (postgres monitoring)
+#   - pgbouncer_exporter   : remove pgbouncer_exporter (pgbouncer monitoring)
+#   - pgbackrest_exporter  : remove pgbackrest_exporter (pgbackrest monitoring)
+#
+# pg_access                : remove pg service access
+#   - dns                  : remove pg dns records
+#   - vip                  : remove vip-manager
+#   - pg_service           : remove pg service from haproxy
+#   - pgbouncer            : remove pgbouncer connection middleware
+#
+# pg_crontab               : remove postgres dbsu crontab
+#
+# postgres                 : remove postgres instances
+#   - pg_replica           : remove all replicas
+#   - pg_primary           : remove primary instance
+#   - pg_meta              : remove metadata from dcs
+#
+# pg_backup                : remove backup repo    (disable with `pg_rm_bkup=false`)
+# pg_data                  : remove postgres data  (disable with `pg_rm_data=false`)
+# pg_pkg                   : uninstall pg packages (disable with `pg_rm_pkg=false`)
+#  - pg_ext                : uninstall postgres extensions alone
+#--------------------------------------------------------------#
+...

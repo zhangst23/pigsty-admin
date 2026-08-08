@@ -1,0 +1,124 @@
+---
+#-----------------------------------------------------------------
+# NODE_IDENTITY
+#-----------------------------------------------------------------
+#nodename:           # [INSTANCE] # node instance identity, use hostname if missing, optional
+node_cluster: nodes   # [CLUSTER] # node cluster identity, use 'nodes' if missing, optional
+nodename_overwrite: true          # overwrite node's hostname with nodename?
+nodename_exchange: false          # exchange nodename among play hosts?
+node_id_from_pg: true             # use postgres identity as node identity if applicable?
+
+#-----------------------------------------------------------------
+# NODE_DNS
+#-----------------------------------------------------------------
+node_write_etc_hosts: true        # modify `/etc/hosts` on target node?
+node_default_etc_hosts:           # static dns records in `/etc/hosts`
+  - "${admin_ip} i.pigsty"
+node_etc_hosts: []                # extra static dns records in `/etc/hosts`
+node_dns_method: add              # how to handle dns servers: add,none,overwrite
+node_dns_servers: ['${admin_ip}'] # dynamic nameserver in `/etc/resolv.conf`
+node_dns_options:                 # dns resolv options in `/etc/resolv.conf`
+  - options single-request-reopen timeout:1
+
+#-----------------------------------------------------------------
+# NODE_PACKAGE
+#-----------------------------------------------------------------
+node_repo_modules: local          # upstream repo to be added on node, local by default
+node_repo_remove: true            # remove existing repo on node?
+node_packages: [openssh-server]   # packages to be installed current nodes with latest version
+#node_default_packages: []        # default packages to be installed on infra nodes
+node_uv_env: /data/venv           # uv venv path, /data/venv by default, empty to skip
+node_pip_packages: ''             # pip packages to be installed in uv venv
+
+#-----------------------------------------------------------------
+# NODE_SEC
+#-----------------------------------------------------------------
+node_selinux_mode: permissive     # set selinux mode: enforcing,permissive,disabled
+node_firewall_mode: zone          # firewall mode: zone (default), off (disable), none (skip & self-managed)
+node_firewall_intranet:           # which intranet cidr considered as internal network
+  - 10.0.0.0/8
+  - 192.168.0.0/16
+  - 172.16.0.0/12
+node_firewall_public_port:        # expose these ports to public network in (zone, strict) mode
+  - 22                            # enable ssh access
+  - 80                            # enable http access
+  - 443                           # enable https access
+
+#-----------------------------------------------------------------
+# NODE_TUNE
+#-----------------------------------------------------------------
+node_disable_numa: false          # disable node numa, reboot required
+node_disable_swap: false          # disable node swap, use with caution
+node_static_network: true         # preserve dns resolver settings after reboot
+node_disk_prefetch: false         # setup disk prefetch on HDD to increase performance
+node_kernel_modules: [ softdog, ip_vs, ip_vs_rr, ip_vs_wrr, ip_vs_sh ] # br_netfilter toa
+node_hugepage_count: 0            # number of 2MB hugepage, take precedence over ratio
+node_hugepage_ratio: 0            # node mem hugepage ratio, 0 disable it by default
+node_overcommit_ratio: 0          # node mem overcommit ratio, 0 disable it by default
+node_tune: oltp                   # node tuned profile: none,oltp,olap,crit,tiny
+# extra sysctl parameters in k:v format in addition to tuned
+# NOTE: fs.nr_open must be >= LimitNOFILE in systemd units, otherwise some services may fail to start
+node_sysctl_params:               # sysctl parameters in k:v format in addition to tuned
+  fs.nr_open: 8388608
+
+#-----------------------------------------------------------------
+# NODE_ADMIN
+#-----------------------------------------------------------------
+node_data: /data                  # node main data directory, `/data` by default
+node_admin_enabled: true          # create a admin user on target node?
+node_admin_uid: 88                # uid and gid for node admin user
+node_admin_username: dba          # name of node admin user, `dba` by default
+node_admin_sudo: nopass           # admin sudo privilege, all,nopass. nopass by default
+node_admin_ssh_exchange: true     # exchange admin ssh key among node cluster
+node_admin_pk_current: true       # add current user's ssh pk to admin authorized_keys
+node_admin_pk_list: []            # ssh public keys to be added to admin user
+node_aliases: {}                  # extra shell aliases to be added, k:v dict
+
+#-----------------------------------------------------------------
+# NODE_TIME
+#-----------------------------------------------------------------
+node_timezone: ''                 # setup node timezone, empty string to skip
+node_ntp_enabled: true            # enable chronyd time sync service?
+node_ntp_servers:                 # ntp servers in `/etc/chrony.conf`
+  - pool pool.ntp.org iburst
+node_crontab_overwrite: true      # overwrite or append to `/etc/crontab`?
+node_crontab: [ ]                 # crontab entries in `/etc/crontab`
+
+#-----------------------------------------------------------------
+# NODE_VIP
+#-----------------------------------------------------------------
+vip_enabled: false                # enable vip on this node cluster?
+# vip_address:         [IDENTITY] # node vip address in ipv4 format, required if vip is enabled
+# vip_vrid:            [IDENTITY] # required, integer, 1-254, should be unique among same VLAN
+vip_role: backup                  # optional, `master|backup`, backup by default, use as init role
+vip_preempt: false                # optional, `true/false`, false by default, enable vip preemption
+vip_interface: auto               # node vip network interface to listen, `auto` by default
+vip_dns_suffix: ''                # node vip dns name suffix, empty string by default
+vip_auth_pass: ''                 # vrrp auth password, empty to use '<cls>-<vrid>' as default
+#vip_exporter_port: 9650          # keepalived exporter listen port, 9650 by default
+
+#-----------------------------------------------------------------
+# META (Reference)
+#-----------------------------------------------------------------
+region: default                   # upstream mirror region: default|china|europe
+proxy_env:                        # global proxy env when downloading packages
+  no_proxy: "localhost,127.0.0.1,10.0.0.0/8,192.168.0.0/16,*.pigsty,*.aliyun.com,mirrors.*,*.myqcloud.com,*.tsinghua.edu.cn"
+  # http_proxy:  # set your proxy here: e.g http://user:pass@proxy.xxx.com
+  # https_proxy: # set your proxy here: e.g http://user:pass@proxy.xxx.com
+  # all_proxy:   # set your proxy here: e.g http://user:pass@proxy.xxx.com
+#-----------------------------------------------------------------
+# NGINX (Reference)
+#-----------------------------------------------------------------
+nginx_enabled: true               # enable nginx on this infra node?
+nginx_home: /www                  # nginx content dir, `/www` by default (soft link to nginx_data)
+nginx_data: /data/nginx           # nginx actual data dir, /data/nginx by default
+#-----------------------------------------------------------------
+# REPO (Reference)
+#-----------------------------------------------------------------
+repo_name: pigsty                 # repo name, pigsty by default
+#repo_upstream: []                # this default vault is pick from repo_upstream_default according to `os_package`
+#-----------------------------------------------------------------
+# CA (Reference)
+#-----------------------------------------------------------------
+cert_validity: 7300d              # cert validity, 20 years by default
+...

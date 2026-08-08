@@ -1,0 +1,11 @@
+---
+#--------------------------------------------------------------#
+# Infra rpm/deb Packages                             [infra_pkg]
+#--------------------------------------------------------------#
+- name: install infra node packages
+  tags: infra_pkg
+  environment: "{{ proxy_env | default({}) }}"
+  package: name={{ item }}
+  with_items: "{{ infra_packages | default(infra_packages_default) | default([]) }}"
+
+...

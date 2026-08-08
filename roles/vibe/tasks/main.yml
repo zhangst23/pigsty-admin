@@ -1,0 +1,70 @@
+---
+#--------------------------------------------------------------#
+# VIBE - Development Tools Module
+#--------------------------------------------------------------#
+
+#--------------------------------------------------------------#
+# VIBE_DIR - Create workspace and render context files
+#--------------------------------------------------------------#
+- name: create vibe workspace directory
+  tags: vibe_dir
+  block:
+
+    - name: create vibe workspace directory
+      file: path="{{ vibe_data }}" state=directory owner="{{ node_user | default('root') }}" group="{{ node_user | default('root') }}" mode='0755'
+    - name: check AGENTS.md context file
+      stat: path="{{ vibe_data }}/AGENTS.md"
+      register: vibe_agents_context
+    - name: remove legacy AGENTS.md symlink
+      file: path="{{ vibe_data }}/AGENTS.md" state=absent
+      when: vibe_agents_context.stat.islnk | default(false)
+    - name: render AGENTS.md context file
+      template: src=AGENTS.md dest="{{ vibe_data }}/AGENTS.md" owner="{{ node_user | default('root') }}" mode='0644'
+    - name: create CLAUDE.md symlink
+      file: src=AGENTS.md dest="{{ vibe_data }}/CLAUDE.md" state=link force=true
+
+
+#--------------------------------------------------------------#
+# CODE - VS Code Server
+#--------------------------------------------------------------#
+- import_tasks: code.yml
+  when: code_enabled|bool
+  tags: code
+
+
+#--------------------------------------------------------------#
+# JUPYTER - JupyterLab
+#--------------------------------------------------------------#
+- import_tasks: jupyter.yml
+  when: jupyter_enabled|bool
+  tags: jupyter
+
+
+#--------------------------------------------------------------#
+# NODEJS - Node.js Runtime
+#--------------------------------------------------------------#
+- import_tasks: nodejs.yml
+  when: nodejs_enabled|bool or codex_enabled|bool or claude_enabled|bool
+  tags: [nodejs, codex, claude]
+
+
+#--------------------------------------------------------------#
+# CODEX - Codex CLI Installation
+#--------------------------------------------------------------#
+- name: install codex cli
+  tags: [codex, codex_install]
+  when: codex_enabled|bool
+  shell: npm install -g @openai/codex
+  args:
+    executable: /bin/bash
+  environment: "{{ proxy_env | default({}) | combine({'PATH': '/usr/local/node/bin:/usr/local/bin:/usr/bin:/bin'}) }}"
+
+
+#--------------------------------------------------------------#
+# CLAUDE - Claude Code CLI Configuration
+#--------------------------------------------------------------#
+- import_tasks: claude.yml
+  when: claude_enabled|bool
+  tags: claude
+
+...

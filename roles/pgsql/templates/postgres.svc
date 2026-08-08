@@ -1,0 +1,48 @@
+[Unit]
+Description=PostgreSQL {{ pg_version|default('18') }} database server
+Documentation=https://www.postgresql.org/docs/{{ pg_version|default('18') }}/static/
+After=syslog.target network-online.target
+Wants=network-online.target
+
+[Service]
+Type=notify
+User={{ pg_dbsu|default('postgres') }}
+Group=postgres
+WorkingDirectory={{ pg_dbsu_home|default('/var/lib/pgsql') }}
+
+# Runtime Directory
+RuntimeDirectory=postgresql
+RuntimeDirectoryMode=0755
+RuntimeDirectoryPreserve=yes
+
+# Environment
+Environment=PGDATA={{ pg_data|default('/pg/data') }}
+
+# Resource Limits
+# fd limit per process, 8M is enough for any workload (must <= fs.nr_open)
+LimitNOFILE=8388608
+LimitNPROC=infinity
+LimitCORE=infinity
+OOMScoreAdjust=-1000
+
+# Lifecycle
+ExecStartPre=/bin/test -d ${PGDATA}
+ExecStart={{ pg_bin_dir|default('/usr/pgsql/bin') }}/postgres -D ${PGDATA}
+ExecReload=/bin/kill -HUP $MAINPID
+KillMode=mixed
+KillSignal=SIGINT
+
+# Timeout
+TimeoutStartSec=infinity
+TimeoutStopSec=120
+
+# Restart Policy
+Restart=on-failure
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=postgres
+
+[Install]
+WantedBy=multi-user.target

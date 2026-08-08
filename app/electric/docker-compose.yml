@@ -1,0 +1,14 @@
+#!/usr/bin/env docker compose
+# please change the credentials in .env file!
+# https://github.com/electric-sql/electric/blob/main/website/public/docker-compose.yaml
+---
+services:
+  electric:
+    container_name: electric
+    image: electricsql/electric
+    env_file:
+      - .env
+    ports:
+      - "${ELECTRIC_PORT}:${ELECTRIC_PORT}"
+      - "${ELECTRIC_PROMETHEUS_PORT}:${ELECTRIC_PROMETHEUS_PORT}"
+...

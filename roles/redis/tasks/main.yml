@@ -1,0 +1,95 @@
+---
+#--------------------------------------------------------------#
+# CLI ARGS: redis_port
+#--------------------------------------------------------------#
+# if `redis_port` is defined (usually specified by, e.g. -e redis_port=6379)
+# it means, we are going to manipulate a single redis instance rather than entire redis node
+# so we skip redis node & exporter tasks, and only init instance with that port
+
+#--------------------------------------------------------------#
+# Redis Identity                                      [redis-id]
+#--------------------------------------------------------------#
+- name: check redis instance config
+  tags: [ always, redis-id ]
+  assert:
+    that:
+      - redis_cluster is defined and redis_cluster != ''
+      - redis_node is defined
+      - redis_instances is defined and redis_instances | type_debug == "dict"
+      - redis_fs_main not in ['/data', '/data/']
+    fail_msg: "variable `redis_cluster|redis_instances` are required, and `redis_fs_main=/data` is no longer allowed for deployment (use `/data/redis`)"
+
+
+#--------------------------------------------------------------#
+# Node                                              [redis_node]
+#--------------------------------------------------------------#
+- import_tasks: node.yml
+  when: not redis_port is defined
+  tags: redis_node
+
+
+#--------------------------------------------------------------#
+# Exporter                                      [redis_exporter]
+#--------------------------------------------------------------#
+- import_tasks: exporter.yml
+  when: not redis_port is defined
+  tags: redis_exporter
+
+
+#--------------------------------------------------------------#
+# Redis Instance                                [redis_instance]
+#--------------------------------------------------------------#
+- include_tasks: instance.yml
+  when: redis_port is not defined or (redis_port is defined and item.key|int == redis_port|int)
+  tags: [ redis_instance, redis_config, redis_launch ]
+  vars:
+    port: "{{ item.key }}"
+    conf: "{{ item.value|default({}) }}"
+  with_dict: "{{ redis_instances }}"
+
+
+#--------------------------------------------------------------#
+# Register                         [add_metrics][redis_register]
+#--------------------------------------------------------------#
+- name: register redis exporter to victoria
+  tags: [ redis_register, register, add_metrics ]
+  delegate_to: '{{ item }}'
+  loop: '{{ groups["infra"]|default([]) }}'
+  become: true
+  copy:
+    dest: "/infra/targets/redis/{{ redis_cluster }}-{{ redis_node }}.yml"
+    owner: victoria
+    group: infra
+    mode: '0640'
+    content: |
+      # {{ redis_cluster }}-{{ redis_node }} @ {{ inventory_hostname }}
+      
+      {% for port in redis_instances %}
+      - labels: { cls: {{ redis_cluster }}, ins: {{ redis_cluster }}-{{ redis_node }}-{{ port }}, instance: {{ inventory_hostname }}:{{ port }} }
+        targets: [ redis://{{ inventory_hostname }}:{{ port }} ]
+      
+      {% endfor %}
+
+
+#--------------------------------------------------------------#
+# Register Redis Logs                 [add_logs][redis_register]
+#--------------------------------------------------------------#
+- name: register redis logs to vector
+  tags: [ redis_register, register, add_logs ]
+  when: vector_enabled|default(true)|bool and not redis_port is defined
+  ignore_errors: true
+  block:
+    - name: render redis vector logging config
+      template: src=redis.yaml dest=/etc/vector/redis.yaml mode=0600
+    - name: reload vector to consume redis log
+      systemd: name=vector state=reloaded enabled=yes daemon_reload=yes
+
+
+#--------------------------------------------------------------#
+# Join Redis Native Cluster                         [redis_join]
+#--------------------------------------------------------------#
+# run join task on redis native cluster
+#- import_tasks: join.yml
+#  when: not redis_port is defined and redis_mode is defined and redis_mode == 'cluster'
+#  tags: redis_join
+...

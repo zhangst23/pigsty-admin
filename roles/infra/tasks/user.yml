@@ -1,0 +1,38 @@
+---
+#--------------------------------------------------------------#
+# Infra Users & Groups                              [infra_user]
+#--------------------------------------------------------------#
+- name: create infra users and groups
+  tags: infra_user
+  ignore_errors: true
+  vars:
+    infra_group_members: >-
+      {{ (['victoria', 'prometheus', 'grafana', 'dnsmasq', 'nginx']
+          + ([node_admin_username | default('dba')] if node_admin_enabled | default(true) else [])
+          + ([node_user | default('root')]))
+         | reject('equalto', 'root') | unique | list }}
+  shell: |
+    #!/bin/bash
+    getent group infra >/dev/null || groupadd -r infra
+    NOLOGIN=$([ -x /sbin/nologin ] && echo /sbin/nologin || echo /usr/sbin/nologin)
+    add_user() {
+      local user="$1" shell="$2" home="$3"
+      getent group "$user" >/dev/null || groupadd -r "$user"
+      id "$user" &>/dev/null && return 0
+      useradd -r -g "$user" -d "$home" -s "$shell" -M "$user" 2>/dev/null || \
+      useradd -r -g "$user" -d "$home" -s "$shell" "$user"
+    }
+    add_user victoria   /bin/bash    /infra
+    add_user prometheus /bin/bash    /infra
+    add_user grafana    /bin/bash    /var/lib/grafana
+    add_user dnsmasq    "$NOLOGIN"   /var/lib/dnsmasq
+    add_user nginx      "$NOLOGIN"   /var/cache/nginx
+
+    for u in {{ infra_group_members | join(' ') }}; do
+      id "$u" &>/dev/null && usermod -aG infra "$u" 2>/dev/null
+    done
+    exit 0
+  args:
+    executable: /bin/bash
+
+...

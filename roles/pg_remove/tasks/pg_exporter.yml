@@ -1,0 +1,19 @@
+---
+#--------------------------------------------------------------#
+# Remove pg_exporter                               [pg_exporter]
+#--------------------------------------------------------------#
+- name: remove postgres exporter
+  tags: pg_exporter
+  become: true
+  ignore_errors: true
+  block:
+
+    - name: stop and disable pg_exporter service
+      systemd: name=pg_exporter state=stopped enabled=no daemon_reload=yes
+
+    - name: remove pg_exporter config file
+      file: name={{ item }} state=absent
+      with_items:
+        - /etc/default/pg_exporter
+        - /etc/pg_exporter.yml
+...

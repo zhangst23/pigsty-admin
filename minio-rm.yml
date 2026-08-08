@@ -1,0 +1,49 @@
+#!/usr/bin/env ansible-playbook
+---
+#==============================================================#
+# File      :   minio-rm.yml
+# Desc      :   remove minio from hosts
+# Ctime     :   2025-07-21
+# Mtime     :   2025-12-31
+# Path      :   minio-rm.yml
+# Docs      :   https://pigsty.io/docs/minio/playbook
+# License   :   Apache-2.0 @ https://pigsty.io/docs/about/license/
+# Copyright :   2018-2026  Ruohang Feng / Vonng (rh@vonng.com)
+#==============================================================#
+- name: MINIO REMOVE
+  become: true
+  hosts: all
+  gather_facts: no
+  ignore_errors: true
+  vars:
+    #minio_safeguard: true             # safeguard for minio remove, set to true halt remove execution
+    #minio_rm_data: true               # remove minio data during remove? true by default
+    #minio_rm_pkg: false               # uninstall minio packages during remove? false by default
+  roles:
+    - { role: node_id      ,when: minio_seq is defined }
+    - { role: minio_remove ,when: minio_seq is defined }
+
+
+#--------------------------------------------------------------#
+# Usage
+#--------------------------------------------------------------#
+#  Remove minio cluster `minio`
+#     minio-rm.yml -l minio        \  # remove cluster `minio`
+#         -e minio_rm_data=true    \  # remove minio data by default
+#         -e minio_rm_pkg=false    \  # do not uninstall minio packages by default
+#         -e minio_safeguard=false    # safeguard is not enabled by default, if enabled, can be override with cli args
+#  It will abort if `minio_safeguard` is set to `true` explicitly
+#
+#--------------------------------------------------------------#
+# Tasks
+#--------------------------------------------------------------#
+# minio-id         : generate minio identities
+# minio_safeguard  : abort if safeguard is enabled
+# minio_deregister : remove minio targets from victoria
+#  - rm_metrics    : remove minio metrics targets
+#  - rm_dns        : remove minio dns records
+# minio_svc        : stop and disable minio systemd service
+# minio_data       : remove minio data (disable with `minio_rm_data=false`)
+# minio_pkg        : uninstall minio packages (enable with `minio_rm_pkg=true`)
+#--------------------------------------------------------------#
+...

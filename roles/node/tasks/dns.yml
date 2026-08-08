@@ -1,0 +1,76 @@
+---
+#--------------------------------------------------------------#
+# Setup Node Static DNS Records                     [node_hosts]
+#--------------------------------------------------------------#
+- name: setup node dns
+  tags: node_hosts
+  when: node_write_etc_hosts|bool
+  block:
+
+    # NOTE: dns records suffixed with "# pigsty dns" will be wiped and re-rendered
+    - name: wipe pigsty dns entries
+      lineinfile: path=/etc/hosts regexp='# pigsty dns$' state=absent
+
+    # NOTE: static dns records from node_default_etc_hosts and node_etc_hosts are suffixed with "# pigsty dns"
+    - name: write static etc hosts entry
+      lineinfile:
+        path: /etc/hosts
+        line: "{{ item | replace('${admin_ip}', admin_ip) }} # pigsty dns"
+      with_items: "{{ node_default_etc_hosts|default([]) + node_etc_hosts|default([]) }}"
+
+    # NOTE: exchanged nodenames are suffixed with "# pigsty meta" and are NOT wiped on re-run
+    - name: exchange nodename between nodes
+      when: nodename_exchange|bool
+      ignore_errors: true
+      lineinfile:
+        path: /etc/hosts
+        line: "{{ inventory_hostname }} {{ item[0] }} # pigsty meta"
+      delegate_to: "{{ item[1] }}"
+      with_nested:
+        - "{{ [nodename] }}"
+        - "{{ ansible_play_hosts }}"
+
+
+#--------------------------------------------------------------#
+# Setup Node DNS Resolver                             [node_dns]
+#--------------------------------------------------------------#
+# add static nameserver to resolv (if node_dns_method != 'none')
+- name: setup node dns resolver
+  tags: node_resolv
+  when: node_dns_method is defined and node_dns_method != 'none'
+  block:
+
+    # add new nameservers to existing nameservers
+    # read the nameserver field as a token so IPv6 addresses stay intact
+    - name: get existing etc resolv
+      when: node_dns_method == 'add'
+      changed_when: false
+      check_mode: false
+      failed_when: false
+      command:
+        argv:
+          - awk
+          - '$1 == "nameserver" && $2 != "" && $2 !~ /^[#;]/ { print $2; if (++n == 3) exit }'
+          - /etc/resolv.conf
+      register: old_nameservers
+
+    - name: generate etc resolv conf
+      copy:
+        dest: /etc/resolv.conf
+        mode: 0644
+        owner: root
+        content: |
+          {% for item in node_dns_options %}
+          {{ item }}
+          {% endfor %}
+          {% for item in node_dns_servers %}
+          nameserver {{ item | replace('${admin_ip}', admin_ip ) }}
+          {% endfor %}
+          {% if node_dns_method == 'add' %}
+          {% for item in old_nameservers.stdout_lines | default([]) %}
+          {% if item not in node_dns_servers and item != admin_ip %}
+          nameserver {{ item | replace('${admin_ip}', admin_ip ) }}
+          {% endif %}
+          {% endfor %}
+          {% endif %}
+...

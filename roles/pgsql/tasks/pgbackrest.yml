@@ -1,0 +1,56 @@
+---
+#--------------------------------------------------------------#
+# Config PgBackrest Repo                     [pgbackrest_config]
+#--------------------------------------------------------------#
+- name: create pgbackrest dir
+  tags: [ pgbackrest, pgbackrest_dir ]
+  file: path=/etc/pgbackrest state=directory owner={{ pg_dbsu }} group=postgres mode=0750
+- name: config pgbackrest
+  tags: [ pgbackrest, pgbackrest_config ]
+  template: src=pgbackrest.conf dest=/etc/pgbackrest/pgbackrest.conf owner={{ pg_dbsu }} group=postgres mode=0640
+
+
+#--------------------------------------------------------------#
+# Init PgBackrest Repo                         [pgbackrest_init]
+#--------------------------------------------------------------#
+# make sure /pg/backup target dir exists (pg_dir)
+# if local repo is used, init a local repo on all cluster members
+# if other repos are used, init a remote repo from primary only
+- name: create pgbackrest repo stanza
+  tags: [ pgbackrest, pgbackrest_init ]
+  when: pgbackrest_method == 'local' or (pgbackrest_method != 'local' and pg_role == 'primary' and pg_upstream is not defined)
+  become: true
+  become_user: "{{ pg_dbsu }}"
+  ignore_errors: true
+  shell: |
+    if [[ -f /etc/pgbackrest/pgbackrest.conf ]]; then
+      rm -rf /tmp/pgbackrest/{{ pg_cluster }}.stop || /bin/true
+      /usr/bin/pgbackrest --stanza={{ pg_cluster }} --no-online stanza-create
+    fi
+  args: { executable: /bin/bash }
+  register: stanza_result
+  retries: 2
+  delay: 5
+  until: stanza_result.rc == 0
+
+
+#--------------------------------------------------------------#
+# Create Initial Backup                      [pgbackrest_backup]
+#--------------------------------------------------------------#
+# create an initial backup on primary when cluster is bootstrapped
+- name: create pgbackrest initial backup
+  tags: [ pgbackrest, pgbackrest_backup ]
+  when: pgbackrest_init_backup|bool and pg_role == 'primary' and pg_upstream is not defined
+  ignore_errors: true
+  become: true
+  become_user: "{{ pg_dbsu }}"
+  shell: |
+    if [[ -f /etc/pgbackrest/initial.done ]]; then
+        echo "initial backup already done"
+    else
+        /usr/bin/pgbackrest --stanza={{ pg_cluster }} backup
+        echo "pgbackrest initial backup is created at $(date)" > /etc/pgbackrest/initial.done 
+    fi
+  args: { executable: /bin/bash }
+
+...

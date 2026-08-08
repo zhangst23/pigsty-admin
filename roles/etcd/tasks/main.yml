@@ -1,0 +1,134 @@
+---
+#--------------------------------------------------------------#
+# Assert etcd identity                             [etcd_assert]
+#--------------------------------------------------------------#
+- name: assert etcd identity
+  tags: etcd_assert
+  assert:
+    that:
+      - etcd_seq is defined and etcd_seq|int >= 0
+    fail_msg: variable 'etcd_seq' is required for etcd instance
+
+#--------------------------------------------------------------#
+# Install etcd                                    [etcd_install]
+#--------------------------------------------------------------#
+- name: install etcd
+  tags: etcd_install
+  environment: "{{ proxy_env | default({}) }}"
+  package: name=etcd state=present
+
+#--------------------------------------------------------------#
+# Create etcd directory                               [etcd_dir]
+#--------------------------------------------------------------#
+- name: create etcd directories
+  tags: etcd_dir
+  block:
+    - name: ensure node_data directory exists
+      file: path={{ node_data }} state=directory owner=root group=root
+      when: etcd_data.startswith(node_data)
+    - name: ensure etcd data directory exists
+      file: path={{ item.path }} state={{ item.state }} owner={{ item.owner }} group={{ item.group }} mode={{ item.mode }}
+      loop:
+        - { path: "/etc/etcd"       ,state: "directory" ,mode: "0750" ,owner: "etcd" ,group: "etcd"  }
+        - { path: "/var/lib/etcd"   ,state: "directory" ,mode: "0770" ,owner: "etcd" ,group: "etcd"  }
+        - { path: "{{ etcd_data }}" ,state: "directory" ,mode: "0700" ,owner: "etcd" ,group: "etcd"  }
+
+#--------------------------------------------------------------#
+# Config etcd                                      [etcd_config]
+#--------------------------------------------------------------#
+- import_tasks: config.yml
+  tags: etcd_config
+  vars: { etcd_instance: "{{ etcd_cluster }}-{{ etcd_seq }}" }
+
+#--------------------------------------------------------------#
+# Add new member                                   [etcd_member]
+#--------------------------------------------------------------#
+# use etcd member add (with RBAC authentication)
+- name: add new member to etcd cluster
+  tags: etcd_member
+  when: etcd_init == 'existing'
+  block:
+
+    - name: add new member to etcd cluster
+      shell: |
+        etcdctl member add "{{ etcd_cluster }}-{{ etcd_seq }}" {% if etcd_learner|bool %}--learner=true{% endif %} --peer-urls=https://{{ inventory_hostname }}:{{ etcd_peer_port }}
+      environment:
+        ETCDCTL_CACERT: "/etc/etcd/ca.crt"
+        ETCDCTL_CERT: "/etc/etcd/server.crt"
+        ETCDCTL_KEY: "/etc/etcd/server.key"
+        ETCDCTL_ENDPOINTS: "{{ groups[etcd_cluster] | difference([inventory_hostname]) | map('regex_replace', '^(.*)$', 'https://\\1:' + etcd_port|string) | join(',') }}"
+        ETCDCTL_USER: "root:{{ etcd_root_password|default('Etcd.Root') }}"
+      register: etcd_member_add_result
+      failed_when:
+        - etcd_member_add_result.rc != 0
+        - "'Peer URLs already exists' not in etcd_member_add_result.stderr"
+      no_log: true
+
+    - name: display member add result
+      debug:
+        msg: >-
+          {% if etcd_member_add_result.rc == 0 %}
+          Successfully added member {{ etcd_cluster }}-{{ etcd_seq }} to etcd cluster
+          {% elif 'Peer URLs already exists' in etcd_member_add_result.stderr %}
+          Member {{ etcd_cluster }}-{{ etcd_seq }} already exists in etcd cluster, skipping
+          {% else %}
+          Unexpected error: {{ etcd_member_add_result.stderr }}
+          {% endif %}
+
+#--------------------------------------------------------------#
+# Launch etcd                                      [etcd_launch]
+#--------------------------------------------------------------#
+- name: launch etcd server
+  tags: etcd_launch
+  block:
+    - name: launch etcd server service
+      systemd: name=etcd state=restarted enabled=yes daemon_reload=yes
+    - name: wait for etcd server online
+      wait_for: host=127.0.0.1 port={{ etcd_port }} state=started timeout=60
+
+#--------------------------------------------------------------#
+# Enable etcd RBAC authentication                    [etcd_auth]
+#--------------------------------------------------------------#
+- name: enable etcd authentication
+  tags: etcd_auth
+  delegate_to: "{{ groups[etcd_cluster][0] }}"
+  run_once: true
+  environment:
+    ETCDCTL_ENDPOINTS: "https://127.0.0.1:{{ etcd_port }}"
+    ETCDCTL_CACERT: "/etc/etcd/ca.crt"
+    ETCDCTL_CERT: "/etc/etcd/server.crt"
+    ETCDCTL_KEY: "/etc/etcd/server.key"
+  shell: |
+    # check if auth is already enabled
+    if etcdctl auth status 2>/dev/null | grep -q "Authentication Status: true"; then
+      echo "etcd auth already enabled, skipping"
+      exit 0
+    fi
+    # create root user and enable auth
+    etcdctl user add root --new-user-password='{{ etcd_root_password }}' 2>/dev/null || true
+    etcdctl auth enable
+    echo "etcd auth enabled successfully"
+  args: { executable: /bin/bash }
+  register: etcd_auth_result
+  changed_when: "'enabled successfully' in etcd_auth_result.stdout"
+  no_log: true
+
+#--------------------------------------------------------------#
+# Register Etcd Metrics to VictoriaMetrics       [etcd_register]
+#--------------------------------------------------------------#
+- name: register etcd as victoria target
+  tags: [ etcd_register, register, add_metrics ]
+  ignore_errors: true
+  delegate_to: '{{ item }}'
+  loop: '{{ groups["infra"]|default([]) }}'
+  copy:
+    dest: "/infra/targets/etcd/{{ etcd_cluster }}-{{ etcd_seq }}.yml"
+    owner: victoria
+    group: infra
+    mode: '0640'
+    content: |
+      # {{ etcd_cluster }}-{{ etcd_seq }} @ {{ inventory_hostname }}
+      - labels: { ip: {{ inventory_hostname }} , ins: {{ etcd_cluster }}-{{ etcd_seq }} , cls: {{ etcd_cluster }} }
+        targets: [ {{ inventory_hostname }}:{{ etcd_port }} ]
+
+...

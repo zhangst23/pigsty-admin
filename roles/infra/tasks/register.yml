@@ -1,0 +1,147 @@
+---
+#--------------------------------------------------------------#
+# Register infra metrics           [add_metrics][infra_register]
+#--------------------------------------------------------------#
+- name: render infra targets to victoria
+  tags: [ infra_register, register, add_metrics ]
+  ignore_errors: true
+  delegate_to: '{{ item }}'
+  loop: '{{ groups["infra"]|default([]) }}'
+  template: src=prometheus/infra.yml.j2 dest=/infra/targets/infra/infra-{{ infra_seq }}.yml owner=victoria group=infra mode=0640
+
+#--------------------------------------------------------------#
+# Register infra logs to vector       [add_logs][infra_register]
+#--------------------------------------------------------------#
+- name: register infra logs to vector
+  tags: [ infra_register, register, add_logs ]
+  when: vector_enabled|default(true)|bool
+  ignore_errors: true
+  block:
+    - name: render infra vector logging config
+      template: src=vector/nginx.yaml dest=/etc/vector/nginx.yaml mode=0600
+    - name: check vector service status
+      command: systemctl is-active vector
+      register: vector_service_status
+      changed_when: false
+      failed_when: false
+    - name: reload vector to consume infra log
+      when: vector_service_status.rc | default(1) == 0
+      systemd: name=vector state=reloaded enabled=yes daemon_reload=yes
+
+
+#--------------------------------------------------------------#
+# Render VictoriaMetrics datasource          [vmetrics_register]
+#--------------------------------------------------------------#
+- name: render vmetrics datasource to grafana
+  tags: [ infra_register, register, add_ds ]
+  delegate_to: '{{ infra_host }}'
+  loop: '{{ groups["infra"] | default([]) }}'
+  loop_control:
+    loop_var: infra_host
+  ignore_errors: true
+  when: vmetrics_enabled|bool
+  copy:
+    dest: /infra/datasources/{{ ds_name }}.json
+    content: |
+      {
+        "name": "{{ ds_name }}",
+        "type": "prometheus",
+        "access": "proxy",
+        "url": "http://{{ inventory_hostname }}:{{ vmetrics_port|default(8428) }}",
+        "isDefault": false,
+        "editable": true,
+        "jsonData": {
+          "timeInterval": "2s",
+          "queryTimeout": "60s",
+          "tlsAuth": false,
+          "tlsAuthWithCACert": false
+        }
+      }
+    mode: 0600
+  vars:
+    ds_name: "vmetrics-{{ infra_seq }}"
+
+#--------------------------------------------------------------#
+# Render VictoriaLogs datasource                [vlogs_register]
+#--------------------------------------------------------------#
+- name: render vlogs datasource to grafana
+  tags: [ infra_register, register, add_ds ]
+  delegate_to: '{{ infra_host }}'
+  loop: '{{ groups["infra"] | default([]) }}'
+  loop_control:
+    loop_var: infra_host
+  ignore_errors: true
+  when: vlogs_enabled|bool
+  copy:
+    dest: /infra/datasources/{{ ds_name }}.json
+    content: |
+      {
+        "name": "{{ ds_name }}",
+        "type": "victoriametrics-logs-datasource",
+        "access": "proxy",
+        "url": "http://{{ inventory_hostname }}:{{ vlogs_port|default(9428) }}",
+        "isDefault": false,
+        "editable": true
+      }
+    mode: 0600
+  vars:
+    ds_name: "vlogs-{{ infra_seq }}"
+
+#--------------------------------------------------------------#
+# Render VictoriaTraces datasource            [vtraces_register]
+#--------------------------------------------------------------#
+- name: render vtraces datasource to grafana
+  tags: [ infra_register, register, add_ds ]
+  delegate_to: '{{ infra_host }}'
+  loop: '{{ groups["infra"] | default([]) }}'
+  loop_control:
+    loop_var: infra_host
+  ignore_errors: true
+  when: vtraces_enabled|bool
+  copy:
+    dest: /infra/datasources/{{ ds_name }}.json
+    content: |
+      {
+        "name": "{{ ds_name }}",
+        "type": "jaeger",
+        "access": "proxy",
+        "url": "http://{{ inventory_hostname }}:{{ vtraces_port|default(10428) }}/select/jaeger",
+        "isDefault": false,
+        "editable": true
+      }
+    mode: 0600
+  vars:
+    ds_name: "vtraces-{{ infra_seq }}"
+
+#--------------------------------------------------------------#
+# Load Victoria datasources via Grafana API  [victoria_load_ds]
+#--------------------------------------------------------------#
+- name: load victoria datasources to grafana
+  tags: [ infra_register, register, add_ds ]
+  delegate_to: '{{ infra_host }}'
+  loop: '{{ groups["infra"] | default([]) }}'
+  loop_control:
+    loop_var: infra_host
+  ignore_errors: true
+  shell: |
+    {% if vmetrics_enabled|bool %}
+    curl -sS -X DELETE "http://127.0.0.1:{{ gf_port }}/ui/api/datasources/name/vmetrics-{{ infra_seq }}" -u "{{ gf_user }}:{{ gf_pass }}" -H 'Content-Type: application/json' || true
+    curl -sS -X POST   "http://127.0.0.1:{{ gf_port }}/ui/api/datasources/" -u "{{ gf_user }}:{{ gf_pass }}" -H 'Content-Type: application/json' -d @/infra/datasources/vmetrics-{{ infra_seq }}.json
+    {% endif %}
+    {% if vlogs_enabled|bool %}
+    curl -sS -X DELETE "http://127.0.0.1:{{ gf_port }}/ui/api/datasources/name/vlogs-{{ infra_seq }}" -u "{{ gf_user }}:{{ gf_pass }}" -H 'Content-Type: application/json' || true
+    curl -sS -X POST   "http://127.0.0.1:{{ gf_port }}/ui/api/datasources/" -u "{{ gf_user }}:{{ gf_pass }}" -H 'Content-Type: application/json' -d @/infra/datasources/vlogs-{{ infra_seq }}.json
+    {% endif %}
+    {% if vtraces_enabled|bool %}
+    curl -sS -X DELETE "http://127.0.0.1:{{ gf_port }}/ui/api/datasources/name/vtraces-{{ infra_seq }}" -u "{{ gf_user }}:{{ gf_pass }}" -H 'Content-Type: application/json' || true
+    curl -sS -X POST   "http://127.0.0.1:{{ gf_port }}/ui/api/datasources/" -u "{{ gf_user }}:{{ gf_pass }}" -H 'Content-Type: application/json' -d @/infra/datasources/vtraces-{{ infra_seq }}.json
+    {% endif %}
+    true
+  args: { executable: /bin/bash }
+  vars:
+    gf_port: "{{ grafana_port|default(3000) }}"
+    gf_user: "{{ grafana_admin_username|default('admin') }}"
+    gf_pass: "{{ grafana_admin_password|default('pigsty') }}"
+
+
+...

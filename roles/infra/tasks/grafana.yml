@@ -1,0 +1,118 @@
+---
+#==============================================================#
+# File      :   grafana.yml
+# Desc      :   init grafana on infra nodes
+# Docs      :   https://pigsty.io/docs/infra/
+# License   :   Apache-2.0 @ https://pigsty.io/docs/about/license/
+# Copyright :   2018-2026  Ruohang Feng / Vonng (rh@vonng.com)
+#==============================================================#
+
+#--------------------------------------------------------------#
+# Install Grafana                              [grafana_install]
+#--------------------------------------------------------------#
+#- name: make sure grafana installed
+#  tags: grafana_install
+#  package: name={{ item }} state=present
+#  with_items: [ grafana, grafana-plugins ]
+
+
+#--------------------------------------------------------------#
+# Cleanup Grafana                                [grafana_clean]
+#--------------------------------------------------------------#
+- name: cleanup grafana data and config
+  tags: grafana_clean
+  when: grafana_clean|bool
+  ignore_errors: true
+  block:
+
+    - name: Stop grafana service
+      ignore_errors: true
+      tags: grafana_stop
+      systemd: name=grafana-server state=stopped enabled=yes daemon_reload=yes
+
+    - name: remove grafana config
+      tags: grafana_rmconf
+      file: path={{ item }} state=absent
+      with_items:
+        - /etc/grafana/provisioning/dashboards/pigsty.yml
+
+    - name: remove grafana data
+      tags: grafana_rmdata
+      file: path=/var/lib/grafana/grafana.db state=absent
+
+
+#--------------------------------------------------------------#
+# Create Grafana Dir                               [grafana_dir]
+#--------------------------------------------------------------#
+- name: make grafana directories
+  tags: grafana_dir
+  file: path={{ item }} state=directory owner=grafana group=grafana mode=755
+  with_items:
+    - /etc/grafana/                          # grafana config dir
+    - /etc/dashboards                        # grafana dashboard dir to be provisioned
+    - /etc/grafana/provisioning/dashboards   # dashboard provisioner config dir
+    - /etc/grafana/provisioning/datasources  # datasource provisioner config dir
+    - /var/lib/grafana/plugins               # grafana plugins dir
+
+
+#--------------------------------------------------------------#
+# Config Grafana                                [grafana_config]
+#--------------------------------------------------------------#
+- name: render provisioning datasources
+  tags: grafana_config
+  template: src={{ item.src }} dest={{ item.dest }} owner=grafana group=grafana
+  with_items:
+    - { src: grafana/grafana.ini.j2    ,dest: /etc/grafana/grafana.ini }
+    - { src: grafana/datasource.yml.j2 ,dest: /etc/grafana/provisioning/datasources/pigsty.yml }
+    - { src: grafana/dashboard.yml.j2  ,dest: /etc/grafana/provisioning/dashboards/pigsty.yml  }
+
+
+#--------------------------------------------------------------#
+# Launch Grafana                                [grafana_launch]
+#--------------------------------------------------------------#
+# launch grafana on port 3000
+- name: launch grafana
+  tags: grafana_launch
+  when: grafana_enabled|bool
+  block:
+    - name: launch grafana systemd service
+      throttle: "{% if grafana_pgurl != '' %}1{% else %}5{% endif %}"
+      systemd: name=grafana-server state=restarted enabled=yes daemon_reload=yes
+    - name: wait for grafana service online
+      wait_for: host=127.0.0.1 port={{ grafana_port|default(3000) }} state=started
+
+
+#--------------------------------------------------------------#
+# Launch Grafana                             [grafana_provision]
+#--------------------------------------------------------------#
+- name: provision grafana
+  tags: grafana_provision
+  when: grafana_enabled|bool
+  block:
+
+    # sync files/grafana @ local -> /etc/dashboards @ infra
+    - name: sync grafana dashboards
+      tags: dashboard_sync
+      copy: src=grafana/ dest=/infra/dashboards/
+
+    - name: provisioning grafana with grafana.py
+      when: inventory_hostname in groups["infra"]|default([])
+      throttle: "{% if grafana_pgurl != '' %}1{% else %}5{% endif %}"
+      tags: dashboard_init
+      ignore_errors: true
+      vars:
+        endpoint: "http://127.0.0.1:{{ grafana_port|default(3000) }}/ui"
+        username: "{{ grafana_admin_username|default('admin') }}"
+        password: "{{ grafana_admin_password|default('pigsty') }}"
+      shell: |
+        #!/bin/bash
+        export GRAFANA_ENDPOINT={{ endpoint }}
+        export GRAFANA_USERNAME={{ username }}
+        export GRAFANA_PASSWORD={{ password }}
+
+        # run provisioning logic
+        cd /infra/dashboards/
+        chown -R root:root /infra/dashboards/
+        /bin/python3 /infra/dashboards/grafana.py init /infra/dashboards/
+      args: { executable: /bin/bash }
+...

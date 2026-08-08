@@ -1,0 +1,82 @@
+---
+#--------------------------------------------------------------#
+# check pg private key existence               [pg_cert_private]
+#--------------------------------------------------------------#
+- name: create pg private key
+  tags: pg_cert_private
+  become: false
+  connection: local
+  vars:
+    ansible_python_interpreter: "{{ ansible_playbook_python }}"
+  block:
+
+    # check pg sever private key on primary instance
+    #- name: check if pg private key exists
+    #  stat: path=files/pki/pgsql/{{ pg_cluster }}.key
+    #  register: pg_key_exists
+    # try to fetch private key from primary instance
+    #- name: check if pg private key exists on primary
+    #  when: not pg_key_exists.stat.exists|bool
+    #  stat: path="/pg/cert/server.key"
+    #  register: pg_key_primary_exists
+    #- name: fetch pg private key from primary
+    #  when: not pg_key_exists.stat.exists|bool and pg_key_primary_exists.stat.exists|bool
+    #  fetch: src=/pg/cert/server.key dest=files/pki/pgsql/{{ pg_cluster }}.key flat=yes
+
+    # generate pg private key if not exists on local instance
+    - name: generate pg private key
+      connection: local
+      openssl_privatekey: path=files/pki/pgsql/{{ pg_cluster }}.key mode=0600
+
+
+#--------------------------------------------------------------#
+# Signing server certs                           [pg_cert_issue]
+#--------------------------------------------------------------#
+- name: signing cert for postgres
+  tags: pg_cert_issue
+  become: false
+  connection: local
+  vars:
+    ansible_python_interpreter: "{{ ansible_playbook_python }}"
+  block:
+
+    # generate csr for each member
+    - name: generate pg server signing request
+      connection: local
+      openssl_csr:
+        path: "files/pki/csr/{{ pg_cluster }}-{{ pg_seq }}.csr"
+        privatekey_path: "files/pki/pgsql/{{ pg_cluster }}.key"
+        common_name: "{{ pg_cluster }}-{{ pg_seq }}"
+        organization_name: pigsty
+        organizational_unit_name: postgres
+        subject_alt_name:
+          - "DNS:localhost"
+          - "DNS:{{ pg_cluster }}"
+          - "DNS:{{ pg_cluster }}-{{ pg_seq }}"
+          - "IP:127.0.0.1"
+          - "IP:{{ inventory_hostname }}"
+
+    - name: issue pg server certificate
+      connection: local
+      openssl_certificate:
+        path: "files/pki/pgsql/{{ pg_cluster }}-{{ pg_seq }}.crt"
+        csr_path: "files/pki/csr/{{ pg_cluster }}-{{ pg_seq }}.csr"
+        provider: ownca
+        ownca_path: files/pki/ca/ca.crt
+        ownca_privatekey_path: files/pki/ca/ca.key
+        ownca_not_after: "+{{ cert_validity }}"
+        mode: 0644
+
+
+#--------------------------------------------------------------#
+# copy postgres key & certs                       [pg_cert_copy]
+#--------------------------------------------------------------#
+- name: copy pg server certificates
+  tags: pg_cert_copy
+  any_errors_fatal: true
+  copy: src={{ item.src }} dest={{ item.dest }} owner={{ item.owner }} group={{ item.group|default(item.owner) }} mode={{ item.mode }}
+  with_items:
+    - { src: "files/pki/ca/ca.crt"                               ,dest: "/pg/cert/ca.crt"     ,owner: "{{ pg_dbsu }}"                    ,mode: "0644" }
+    - { src: "files/pki/pgsql/{{ pg_cluster }}-{{ pg_seq }}.crt" ,dest: "/pg/cert/server.crt" ,owner: "{{ pg_dbsu }}", group: "postgres" ,mode: "0644" }
+    - { src: "files/pki/pgsql/{{ pg_cluster }}.key"              ,dest: "/pg/cert/server.key" ,owner: "{{ pg_dbsu }}", group: "postgres" ,mode: "0600" }
+...

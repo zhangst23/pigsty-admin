@@ -1,0 +1,104 @@
+#!/usr/bin/env ansible-playbook
+---
+#==============================================================#
+# File      :   infra.yml
+# Desc      :   init pigsty infrastructure on infra nodes
+# Ctime     :   2021-01-19
+# Mtime     :   2025-12-25
+# Path      :   infra.yml
+# Docs      :   https://pigsty.io/docs/infra/playbook
+# License1  :   Apache-2.0 @ https://pigsty.io/docs/about/license/
+# License2  :   Apache-2.0 for Grafana related stuff
+# Copyright :   2018-2026  Ruohang Feng / Vonng (rh@vonng.com)
+#==============================================================#
+
+
+#--------------------------------------------------------------#
+# create CA on files/pki/ca @ localhost                     [ca]
+#--------------------------------------------------------------#
+- name: CA
+  become: true
+  hosts: localhost
+  gather_facts: no
+  tags: ca
+  roles: [{ role: ca }]
+
+
+#--------------------------------------------------------------#
+# install module `INFRA` and `NODE` on infra nodes
+#--------------------------------------------------------------#
+- name: INFRA
+  become: true
+  hosts: infra
+  gather_facts: no
+  roles:
+    # id
+    - { role: node_id        ,tags: id         }  # generate node & pgsql identity
+    # repo
+    - { role: repo           ,tags: repo       }  # create local yum repo
+    # node-init
+    - { role: node           ,tags: node       }  # prepare node for pigsty
+    - { role: haproxy        ,tags: haproxy    }  # init haproxy if enabled
+    # infra
+    - { role: infra          ,tags: infra      }  # setup infra components
+    # node-monitor
+    - { role: node_monitor   ,tags: monitor    }  # init node exporter & vector
+
+
+#--------------------------------------------------------------#
+# Tasks
+#--------------------------------------------------------------#
+# ca            : create self-signed CA on localhost files/pki
+#   - ca_dir        : create CA directory
+#   - ca_private    : generate ca private key: files/pki/ca/ca.key
+#   - ca_cert       : signing ca cert: files/pki/ca/ca.crt
+#
+# id            : generate node identity
+#
+# repo          : bootstrap a local yum repo from internet or offline packages
+#   - repo_dir      : create repo directory
+#   - repo_check    : check repo exists
+#   - repo_prepare  : use existing repo if exists
+#   - repo_build    : build repo from upstream if not exists
+#     - repo_upstream    : handle upstream repo files in /etc/yum.repos.d
+#       - repo_remove    : remove existing repo file if repo_remove == true
+#       - repo_add       : add upstream repo files to /etc/yum.repos.d
+#     - repo_url_pkg     : download packages from internet defined by repo_url_packages
+#     - repo_cache       : make upstream yum cache with yum makecache
+#     - repo_boot_pkg    : install bootstrap pkg such as createrepo_c,yum-utils,...
+#     - repo_pkg         : download packages & dependencies from upstream repo
+#     - repo_create      : create a local yum repo with createrepo_c & modifyrepo_c
+#     - repo_use         : add newly built repo into /etc/yum.repos.d
+#   - repo_nginx    : launch a nginx for repo if no nginx is serving
+#
+# node/haproxy/docker/monitor : setup infra node as a common node (check node.yml)
+#   - node_name, node_hosts, node_resolv, node_firewall, node_ca, node_repo, node_pkg
+#   - node_feature, node_kernel, node_tune, node_sysctl, node_profile, node_ulimit
+#   - node_data, node_admin, node_timezone, node_ntp, node_crontab, node_vip
+#   - haproxy_install, haproxy_config, haproxy_launch, haproxy_reload
+#   - docker_install, docker_admin, docker_config, docker_launch, docker_image
+#   - haproxy_register, node_exporter, node_register, vector
+#
+# infra         : setup infra components
+#   - infra_user     : create infra user & group
+#   - infra_dir      : infra_dir_data, infra_dir_link, infra_dir_create
+#   - infra_env      : env_patroni, env_pg, env_pgadmin, env_var
+#   - infra_pkg      : install infra packages
+#   - infra_user     : setup infra os user group
+#   - infra_cert     : issue cert for infra components
+#   - dns            : dns_config, dns_record, dns_launch
+#   - nginx          : nginx_config, nginx_cert, nginx_static, nginx_launch, nginx_certbot, nginx_reload, nginx_exporter
+#   - victoria       : setup victoria stack
+#     - vmetrics       : vmetrics_clean, vmetrics_dir, vmetrics_config, vmetrics_launch, vmetrics_reload
+#     - vlogs          : vlogs_clean, vlogs_dir, vlogs_config, vlogs_launch
+#     - vtraces        : vtraces_clean, vtraces_dir, vtraces_config, vtraces_launch
+#     - vmalert        : vmalert_config, vmalert_launch, vmalert_reload
+#   - alertmanager   : alertmanager_config, alertmanager_launch
+#   - blackbox       : blackbox_config, blackbox_launch
+#   - grafana        : grafana_clean, grafana_config, grafana_launch, grafana_provision
+#   - infra_register : register infra components to victoria stack
+#     - add_metrics    : register infra as victoria monitor targets
+#     - add_logs       : register infra as vector logging source
+#     - add_ds         : register infra victoria stack as grafana datasource
+#--------------------------------------------------------------#
+...

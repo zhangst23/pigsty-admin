@@ -1,0 +1,833 @@
+#!/bin/bash
+#==============================================================#
+# File      :   configure
+# Desc      :   generate pigsty.yml config according to env
+# Ctime     :   2021-05-17
+# Mtime     :   2026-06-11
+# Path      :   configure
+# Docs      :   https://pigsty.io/docs/concept/iac/configure
+# License   :   Apache-2.0 @ https://pigsty.io/docs/about/license/
+# Copyright :   2018-2026  Ruohang Feng / Vonng (rh@vonng.com)
+#==============================================================#
+PIGSTY_VERSION=v4.4.0
+
+#--------------------------------------------------------------#
+# Usage
+#--------------------------------------------------------------#
+#./configure
+#    [-c|--conf <confname>   # [meta|dual|trio|full|app/supa|...]
+#    [-i|--ip <ip>]          # primary IP address (skip with -s)
+#    [-v|--version <pgver>   # [18|17|16|15|14]
+#    [-r|--region <region>   # [default|china|europe]
+#    [-o|--output <file>]    # output config file (default: pigsty.yml)
+#    [-s|--skip]             # skip IP address probing
+#    [-x|--proxy]            # write proxy env from environment
+#    [-n|--non-interactive]  # non-interactively mode
+#    [-p|--port <port>]      # specify SSH port (only used if set)
+#    [-g|--generate]         # generate random passwords for security
+#==============================================================#
+INTERACTIVE=true                  # run configure with interactive mode
+OUTPUT=pigsty.yml                 # output config file path
+PRIMARY_IP=""                     # primary IP address (do not use public IP)
+MODE=""                           # config template (meta|dual|trio|full|prod)
+PGVER=""                          # pg major version (18|17|16|15|14)
+REGION=""                         # default region (default|china|europe)
+USE_PROXY=false                   # use global env http_proxy, https_proxy, all_proxy, no_proxy
+SKIP=false                        # skip ip probe (convenient if using fixed templates)
+SSH_PORT=""                       # default SSH port
+SSH_CHECK_TIMEOUT=5              # hard limit for SSH checks in configure
+GENERATE_PASSWORD=false           # generate random passwords for security
+DEFAULT_NO_PROXY="localhost,127.0.0.1,10.0.0.0/8,192.168.0.0/16,*.pigsty,*.aliyun.com,mirrors.*,mirror.*,*.tsinghua.edu.cn"
+
+
+#--------------------------------------------------------------#
+# Utils
+#--------------------------------------------------------------#
+__CN='\033[0m';__CK='\033[0;30m';__CR='\033[0;31m';__CG='\033[0;32m';
+__CY='\033[0;33m';__CB='\033[0;34m';__CM='\033[0;35m';__CC='\033[0;36m';__CW='\033[0;37m';
+function log_info() {  printf "[${__CG} OK ${__CN}] ${__CG}$*${__CN}\n";   }
+function log_warn() {  printf "[${__CY}WARN${__CN}] ${__CY}$*${__CN}\n";   }
+function log_error() { printf "[${__CR}FAIL${__CN}] ${__CR}$*${__CN}\n";   }
+function log_debug() { printf "[${__CB}HINT${__CN}] ${__CB}$*${__CN}\n";   }
+function log_input() { printf "[${__CM} IN ${__CN}] ${__CM}$*\n=> ${__CN}"; }
+function log_hint()  { printf "${__CB}$*${__CN}"; }
+ipv4_regexp='(([0-9]|[0-9]{2}|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[0-9]{2}|1[0-9]{2}|2[0-4][0-9]|25[0-5])'
+VALID_VERSIONS="14 15 16 17 18 19"
+
+#--------------------------------------------------------------#
+# Param
+#--------------------------------------------------------------#
+PROG_NAME="$(basename $0)"
+PROG_DIR="$(cd $(dirname $0) && pwd)"
+PIGSTY_HOME="${PROG_DIR}"
+REPO_NAME=pigsty
+NGINX_HOME=/www
+REPO_DIR=${NGINX_HOME}/${REPO_NAME}
+BIN_DIR=${PIGSTY_HOME}/files/bin
+KERNEL=$(uname -s)
+
+# extract os vendor & version from /etc/os-release
+OS_VENDOR=""
+OS_VERSION=""
+OS_PACKAGE=""
+OS_MANAGER=""
+
+#----------------------------------------------#
+# region
+#----------------------------------------------#
+# return 0 if url is reachable, otherwise 1
+function url_reachable() {
+    local return_code
+    return_code=$(curl -I -s --max-time 2 "$1" -w %{http_code} -o /dev/null)
+    [[ "${return_code}" != "000" ]]
+}
+
+# return 0 if behind gfw (inside mainland china), 1 if not behind gfw, 2 if internet unreachable
+function behind_gfw() {
+    if url_reachable "https://www.google.com"; then
+        return 1
+    fi
+    if url_reachable "https://pigsty.cc"; then
+        return 0
+    fi
+    return 2
+}
+
+function check_region(){
+  if [ "${REGION}" == "" ]; then
+    behind_gfw
+    local detect_result=$?
+    if [[ ${detect_result} -eq 0 ]]; then
+        REGION=china       # mainland china is behind GFW
+    else
+        REGION=default     # otherwise use default mirror
+        if [[ ${detect_result} -eq 2 ]]; then
+            log_warn "internet unreachable, fallback to default"
+        fi
+    fi
+    log_info "region = ${REGION}"
+  fi
+}
+
+
+#----------------------------------------------#
+# postgres major version
+#----------------------------------------------#
+function check_version(){
+    local found="false"
+    if [ -z "$PGVER" ]; then
+        return 0
+    else
+        for version in ${VALID_VERSIONS}; do
+            if [[ "$PGVER" == "$version" ]]; then
+                found="true"
+                break
+            fi
+        done
+
+        if [[ "$found" != "true" ]]; then
+            log_error "invalid pg major version: ${PGVER}"
+            log_hint "valid pg version numbers: ${VALID_VERSIONS}"
+            # If version is explicitly given and invalid, exit
+            exit 1
+        else
+            log_info "pg_ver = ${PGVER}"
+        fi
+    fi
+}
+
+function check_proxy_env(){
+    if [[ "${USE_PROXY}" == "true" ]]; then
+        # use lowercase http_proxy if HTTP_PROXY is not set
+        [[ "${HTTP_PROXY}" == '' && "${http_proxy}" != '' ]] && HTTP_PROXY=${http_proxy}
+        # use default no_proxy if NO_PROXY is not set
+        [[ "${NO_PROXY}" == '' ]] && NO_PROXY=${DEFAULT_NO_PROXY}
+        # use ALL_PROXY as HTTP_PROXY if HTTP_PROXY is not set
+        [[ "${ALL_PROXY}" != '' && "${HTTP_PROXY}" == '' ]] && HTTP_PROXY=${ALL_PROXY}
+        # use ALL_PROXY as HTTPS_PROXY if HTTPS_PROXY is not set
+        [[ "${ALL_PROXY}" != '' && "${HTTPS_PROXY}" == '' ]] && HTTPS_PROXY=${ALL_PROXY}
+        log_info "proxy = from env"
+    fi
+}
+
+
+#----------------------------------------------#
+# kernel
+#----------------------------------------------#
+function check_kernel(){
+    local kernel_name=$(uname -s)
+    if [[ "${kernel_name}" == "Linux" ]]; then
+        log_info "kernel  = ${kernel_name}"
+        return 0
+    elif [[ "${kernel_name}" == "Darwin" ]]; then
+        log_warn "kernel  = ${kernel_name}, can be used as admin node only"
+    else
+        log_warn "kernel  = ${kernel_name}, not supported, Linux only"
+        #exit 1
+    fi
+}
+
+
+#----------------------------------------------#
+# machine
+#----------------------------------------------#
+function check_machine(){
+    local machine_name=$(uname -m)
+    if [[ "${machine_name}" == "x86_64" || ${machine_name} == "amd64" ]]; then
+        log_info "machine = ${machine_name}"
+        return 0
+    elif [[ "${machine_name}" == "aarch64" || ${machine_name} == "arm64" ]]; then
+        log_info "machine = ${machine_name}"
+        return 0
+    else
+        log_warn "machine = ${machine_name}, not supported"
+        #exit 2
+    fi
+}
+
+
+#----------------------------------------------#
+# os package manager (yum|apt|...)
+#----------------------------------------------#
+function check_package_manager(){
+    # get package / manager: rpm|deb and dnf|yum|apt|apt-get|zypper
+    # skip for macos
+    if [[ "$(uname)" == "Darwin" ]]; then
+        OS_PACKAGE="brew"
+        OS_MANAGER="brew"
+        log_info "package = brew (macOS)"
+        return 0
+    fi
+
+    if command -v dpkg >/dev/null 2>&1; then
+        OS_PACKAGE="deb"
+        if command -v apt >/dev/null 2>&1; then
+            OS_MANAGER="apt"
+        elif command -v apt-get >/dev/null 2>&1; then
+            OS_MANAGER="apt-get"
+        elif command -v brew >/dev/null 2>&1; then
+            OS_MANAGER="brew"
+        else
+            log_error "fail to determine os package manager for deb"
+            exit 4
+        fi
+    elif command -v rpm >/dev/null 2>&1; then
+        OS_PACKAGE="rpm"
+        if command -v dnf >/dev/null 2>&1; then
+            OS_MANAGER="dnf"
+        elif command -v yum >/dev/null 2>&1; then
+            OS_MANAGER="yum"
+        elif command -v zypper >/dev/null 2>&1; then
+            OS_MANAGER="zypper"
+        elif command -v brew >/dev/null 2>&1; then
+            OS_MANAGER="brew"
+        else
+            log_error "fail to determine os package manager for rpm"
+            exit 4
+        fi
+    else
+        log_error "fail to determine os package type"
+        #exit 3
+    fi
+    log_info "package = ${OS_PACKAGE},${OS_MANAGER}"
+}
+
+
+#----------------------------------------------#
+# os release (Linux|Darwin etc..)
+#----------------------------------------------#
+function check_vendor_version(){
+  if [[ ${KERNEL} == "Darwin" ]]; then
+      return 0
+  fi
+
+  if [[ -f /etc/os-release ]]; then
+      . /etc/os-release
+      OS_VENDOR="$ID"
+      OS_VERSION="$VERSION_ID"
+      if [[ $VERSION_ID == *.* ]]; then
+          OS_VERSION=$(echo "$VERSION_ID" | cut -d. -f1)
+      else
+          OS_VERSION="${VERSION_ID}"
+      fi
+      log_info "vendor  = ${OS_VENDOR} (${NAME})"
+      log_info "version = ${OS_VERSION} (${VERSION_ID})"
+      return 0
+  else
+      log_warn "/etc/os-release file not found, unknown OS"
+      #exit 5
+  fi
+}
+
+
+#----------------------------------------------#
+# sudo
+#----------------------------------------------#
+function can_nopass_sudo(){
+    local current_user=$(whoami)
+    if [[ "${current_user}" == "root" ]]; then
+        return 0
+    fi
+    if sudo -n ls >/dev/null 2>/dev/null; then
+        return 0
+    fi
+    return 1
+}
+
+function check_sudo(){
+    if [[ ${KERNEL} == "Darwin" ]]; then
+        return 0
+    fi
+    local current_user=$(whoami)
+    if can_nopass_sudo; then
+        log_info "sudo = ${current_user} ok"
+    else
+        log_warn "sudo = ${current_user} missing nopasswd"
+        if [[ ${SKIP} != "true" ]]; then
+            log_warn "fix nopass sudo for '${current_user}' with sudo:"
+            log_hint "echo '%%${current_user} ALL=(ALL) NOPASSWD: ALL' > /etc/sudoers.d/${current_user}\n"
+            # exit 5   # we don't exit here , just a configure process
+        fi
+    fi
+}
+
+
+#----------------------------------------------#
+# ssh
+#----------------------------------------------#
+# One MUST have nopass to localhost with same user
+# configure can fix that for you (via ssh-keygen)
+
+function can_nopass_ssh(){
+    local current_user=$(whoami)
+    local user=${1-${current_user}}
+    local ipaddr=${2-'127.0.0.1'}
+    if [[ -n "${SSH_PORT}" ]]; then
+        ssh -p "${SSH_PORT}" -oBatchMode=yes -o "StrictHostKeyChecking no" -o "ConnectTimeout=${SSH_CHECK_TIMEOUT}" -o "ConnectionAttempts=1" -o "ServerAliveInterval=${SSH_CHECK_TIMEOUT}" -o "ServerAliveCountMax=1" ${user}@${ipaddr} 'ls' 1>/dev/null 2>/dev/null
+    else
+        ssh -oBatchMode=yes -o "StrictHostKeyChecking no" -o "ConnectTimeout=${SSH_CHECK_TIMEOUT}" -o "ConnectionAttempts=1" -o "ServerAliveInterval=${SSH_CHECK_TIMEOUT}" -o "ServerAliveCountMax=1" ${user}@${ipaddr} 'ls' 1>/dev/null 2>/dev/null
+    fi
+}
+
+
+function check_ssh(){
+    if [[ ${KERNEL} == "Darwin" ]]; then
+        return 0
+    fi
+    if can_nopass_ssh; then
+        if [[ -n "${SSH_PORT}" ]]; then
+            log_info "ssh = $(whoami)@127.0.0.1 (port: ${SSH_PORT}) ok"
+        else
+            log_info "ssh = $(whoami)@127.0.0.1 ok"
+        fi
+        return 0
+    else
+        if [[ -n "${SSH_PORT}" ]]; then
+            log_warn "ssh = $(whoami)@127.0.0.1 (port: ${SSH_PORT}) failed"
+        else
+            log_warn "ssh = $(whoami)@127.0.0.1 failed"
+        fi
+        # exit 6   # we don't exit here , just a configure process
+    fi
+}
+
+
+#----------------------------------------------#
+# primary ip
+#----------------------------------------------#
+# One MUST configure a local primary IP address
+# local primary ip are fetched in following order
+# 1. if ip is given via -i|--ip , just use it
+# 2. if only one ip is detected, just use it
+# 3. if multiple ip detected, ask user for it  (interactive mode)
+# 4. if -n|non-interactive is set, abort on error
+#----------------------------------------------#
+function is_valid_ip(){
+    if [[ "$1" =~ (([0-9]|[0-9]{2}|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[0-9]{2}|1[0-9]{2}|2[0-4][0-9]|25[0-5]) ]]; then
+        return 0
+    else
+        return 1
+    fi
+}
+
+function get_ip_count(){
+    echo $(hostname --all-ip-addresses 2>/dev/null | wc -w)
+}
+
+function list_ipaddr(){
+    local ipList=$(hostname --all-ip-addresses)
+    local i=0
+    for ip in $ipList
+    do
+        i=$((i+1))
+        local ipDetail=$(ip addr 2>/dev/null | grep "inet ${ip}")
+        printf "    (${__CC}${i}${__CN}) ${__CR}${ip}${__CN}\t${__CY}${ipDetail}${__CN}\n"
+    done
+}
+
+function check_ipaddr(){
+    local primary_ip=${1-${PRIMARY_IP}}
+    local interactive=${2-${INTERACTIVE}}
+
+    case "${MODE}" in
+      build/*) # do not replace ip for build templates
+        log_warn "primary_ip = keep (due to conf/${MODE})"
+        return 0
+        ;;
+    esac
+
+    if [[ ${SKIP} == "true" ]]; then
+        log_info "primary_ip = skip"
+        PRIMARY_IP=10.10.10.10
+        return 0
+    fi
+
+    # if ip is given, check it
+    if [[ ! -z "${primary_ip}" ]]; then
+        if is_valid_ip ${primary_ip}; then
+            log_info "primary_ip = ${primary_ip} (from argument)"
+            PRIMARY_IP=${primary_ip}
+            return 0
+        else
+            log_error "primary_ip = ${primary_ip} invalid (from argument)"
+            exit 7
+        fi
+    fi
+
+    # just use the placeholder since we are running on macOS (as admin node)
+    if [[ ${KERNEL} == "Darwin" ]]; then
+        log_warn "primary_ip = default placeholder 10.10.10.10 (macOS)"
+        PRIMARY_IP=10.10.10.10
+        return 0
+    fi
+
+    local ipCount=$(get_ip_count)
+    if ((ipCount<1)); then
+        log_warn "primary_ip = probe failed, use 10.10.10.10"
+        PRIMARY_IP=10.10.10.10
+        return 0
+    fi
+    if ((ipCount==1)); then
+        log_info "primary_ip = $(hostname --all-ip-addresses) (from probe)"
+        PRIMARY_IP=$(hostname --all-ip-addresses | grep -Eo '(([0-9]|[0-9]{2}|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[0-9]{2}|1[0-9]{2}|2[0-4][0-9]|25[0-5])')
+        return 0
+    fi
+
+    # multiple IP detected
+    log_warn "Multiple IP address candidates found:"
+    list_ipaddr
+
+    # special case: demo fixed ip (10.10.10.10), we will choose it directly without asking!
+    if  [[ $(hostname --all-ip-addresses) == *'10.10.10.10'* ]]; then
+        log_info "primary_ip = 10.10.10.10 (from demo)"
+        PRIMARY_IP="10.10.10.10"
+        return 0
+    fi
+
+    # ask for input if in interactive mode, abort on non-interactive mode
+    if [[ ${interactive} != "true" ]]; then
+        log_error "primary_ip = dilemma abort"
+        log_hint "HINT: specify ip with -i|--ip , or disable non-interactive mode\n"
+        exit 9
+    fi
+
+    log_input "INPUT primary_ip address (of current meta node, e.g 10.10.10.10):"
+    read -r
+    local primary_ip=${REPLY}
+    if is_valid_ip ${primary_ip}; then
+        log_info "primary_ip = ${primary_ip} (from input)"
+        PRIMARY_IP=${primary_ip}
+        return 0
+    else
+        log_error "primary_ip = ${primary_ip} invalid (from input)"
+        exit 9
+    fi
+}
+
+#----------------------------------------------#
+# check admin
+#----------------------------------------------#
+# check whether current user have nopass ssh
+# access to primary ip with sudo privilege set
+
+function check_admin(){
+    if [[ ${KERNEL} == "Darwin" ]]; then
+        return 0
+    fi
+    local primary_ip=${1-${PRIMARY_IP}}
+
+    case "${MODE}" in
+      build/*) # do not replace ip for build templates
+        log_warn "admin ssh = skip checking (due to conf/${MODE})"
+        return 0
+        ;;
+    esac
+
+    if [[ ${SKIP} == "true" ]]; then
+        log_info "admin ssh = skip checking (due to --skip)"
+        return 0
+    fi
+
+    local current_user=$(whoami)
+    if [[ -n "${SSH_PORT}" ]]; then
+        ssh -p "${SSH_PORT}" -t -oBatchMode=yes -o "StrictHostKeyChecking no" -o "ConnectTimeout=${SSH_CHECK_TIMEOUT}" -o "ConnectionAttempts=1" -o "ServerAliveInterval=${SSH_CHECK_TIMEOUT}" -o "ServerAliveCountMax=1" "${primary_ip}" 'sudo -n ls' 1>/dev/null 2>/dev/null
+    else
+        ssh -t -oBatchMode=yes -o "StrictHostKeyChecking no" -o "ConnectTimeout=${SSH_CHECK_TIMEOUT}" -o "ConnectionAttempts=1" -o "ServerAliveInterval=${SSH_CHECK_TIMEOUT}" -o "ServerAliveCountMax=1" "${primary_ip}" 'sudo -n ls' 1>/dev/null 2>/dev/null
+    fi
+
+    if [[ $? -eq 0 ]]; then
+        if [[ -n "${SSH_PORT}" ]]; then
+            log_info "admin = ${current_user}@${primary_ip} (port: ${SSH_PORT}) ok"
+        else
+            log_info "admin = ${current_user}@${primary_ip} ok"
+        fi
+    else
+        if [[ -n "${SSH_PORT}" ]]; then
+            log_error "admin = ${current_user}@${primary_ip}:${SSH_PORT} failed (nopass ssh sudo failed)"
+            log_hint "check ${current_user} in sudoer, @${primary_ip}:${SSH_PORT} is ssh accessible\n"
+        else
+            log_error "admin = ${current_user}@${primary_ip} failed (nopass ssh sudo failed)"
+            log_hint "check ${current_user} in sudoer, @${primary_ip} is ssh accessible\n"
+        fi
+    fi
+
+    # if using root, warning
+    if [[ "${current_user}" == "root" ]]; then
+        log_warn "user = root is not recommended"
+    fi
+}
+
+
+#----------------------------------------------#
+# check config mode
+#----------------------------------------------#
+function check_conf(){
+    local mode=${1-${MODE}}
+    local primary_ip=${2-${PRIMARY_IP}}
+
+    # if mode is explicitly set, just use it
+    if [[ ! -z "${mode}" ]]; then
+        log_info "mode = ${mode} (manually set)"
+        return 0
+    fi
+    MODE=meta
+
+    # use el by default, and adhoc template for el7, will be obsolete soon (2024)
+    if [[ ${OS_PACKAGE} == "rpm" ]]; then
+        if [[ "${OS_VERSION}" == "7" ]]; then
+            log_warn "mode = meta, CentOS 7.9 EOL @ 2024-06-30, deprecated, consider using el9/el10 instead"
+            return 0
+        elif [[ "${OS_VERSION}" == "8" ]]; then
+            log_info "mode = meta (el8)"
+            return 0
+        elif [[ "${OS_VERSION}" == "9" ]]; then
+            log_info "mode = meta (el9)"
+            return 0
+        elif [[ "${OS_VERSION}" == "10" ]]; then
+            log_info "mode = meta (el10)"
+            return 0
+        fi
+
+        # fallback to el8 by default
+        log_warn "mode = ${OS_VENDOR} ${OS_VERSION} unknown (EL)"
+        return 0
+    fi
+
+    # use ubuntu by default
+    if [[ ${OS_PACKAGE} == "deb" ]]; then
+        if [[ "${OS_VENDOR}" == "debian" ]]; then
+            if [[ "${OS_VERSION}" == "11" ]]; then
+                log_warn "mode = meta (debian11), EOL @ 2024-08-14, unsupported, use debian 12/13 instead"
+                return 0
+            elif [[ "${OS_VERSION}" == "12" ]]; then
+                log_info "mode = meta (debian12)"
+                return 0
+            elif [[ "${OS_VERSION}" == "13" ]]; then
+                log_info "mode = meta (debian13)"
+                return 0
+            fi
+            log_warn "os = ${OS_VENDOR} ${OS_VERSION} unknown, fallback to debian"
+            return 0
+        elif [[ "${OS_VENDOR}" == "ubuntu" ]]; then
+            if [[ "${OS_VERSION}" == "20" ]]; then
+                log_warn "mode = meta (ubuntu20.04), EOL @ 2025-04-23, unsupported, use ubuntu22.04/24.04/26.04 instead"
+                return 0
+            elif [[ "${OS_VERSION}" == "22" ]]; then
+                log_info "mode = meta (ubuntu22.04)"
+                return 0
+            elif [[ "${OS_VERSION}" == "24" ]]; then
+                log_info "mode = meta (ubuntu24.04)"
+                return 0
+            elif [[ "${OS_VERSION}" == "26" ]]; then
+                log_info "mode = meta (ubuntu26.04)"
+                return 0
+            fi
+            log_warn "os = ${OS_VENDOR} ${OS_VERSION} unknown (Debian)"
+            return 0
+        fi
+    fi
+
+    # if OS is not determined, fall backup to the generic conf/meta.yml
+    log_info "mode = meta (unknown distro)"
+    MODE=meta
+    return 0
+}
+
+
+
+#----------------------------------------------#
+# generate config
+#----------------------------------------------#
+function check_config(){
+    local primary_ip=${1-${PRIMARY_IP}}
+    local mode=${2-${MODE}} # use files/pigsty/${mode}.yml as template
+    local pigsty_home=${3-${PIGSTY_HOME}}
+    local config_src="${pigsty_home}/conf/${mode}.yml"
+    local config_dst=""
+    if [[ "${OUTPUT}" == /* ]]; then
+        config_dst="${OUTPUT}"
+    else
+        config_dst="${pigsty_home}/${OUTPUT}"
+    fi
+
+    # panic if given config file not exists
+    if [[ ! -f ${config_src} ]]; then
+        log_error "config = conf/${mode}.yml not exists"
+        exit 11
+    fi
+    mkdir -p "$(dirname "${config_dst}")"
+    cat "${config_src}" > "${config_dst}"
+
+    # replace placeholder IP 10.10.10.10 with primary_ip for singleton templates
+    case "${mode}" in
+      build/*) # do not replace ip for build templates
+        log_warn "skip ip replacement (due to conf/${MODE})"
+        ;;
+      *)
+        if [[ ${SKIP} == "true" ]]; then
+            log_info "skip ip replacement (due to --skip)"
+        fi
+        sed -ie "s/10.10.10.10/${primary_ip}/g" "${config_dst}"
+        rm -rf "${config_dst}e"
+        ;;
+    esac
+
+    # replace node_tune & pg_conf with tiny or oltp according to current node cpu count
+    if (($(getconf _NPROCESSORS_ONLN)<4)); then   # use tiny template for cpu < 4
+        log_warn "replace oltp template with tiny due to cpu < 4"
+        sed -ie "s/pg_conf: oltp.yml/pg_conf: tiny.yml/g" "${config_dst}"
+        sed -ie "s/node_tune: oltp/node_tune: tiny/g"     "${config_dst}"
+        rm -rf "${config_dst}e"
+    fi
+
+    # replace region if not default
+    if [[ ${REGION} != "default" ]]; then
+        sed -ie 's/    region: default/    region: '"${REGION}"'  /g' "${config_dst}"
+        rm -rf "${config_dst}e"
+    fi
+    if [[ ${REGION} == "china" ]]; then
+        # also uncomment docker_registry_mirrors for china region
+        sed -ie 's/#docker_registry_mirrors/docker_registry_mirrors/g' "${config_dst}"
+        sed -ie 's/#PIP_MIRROR_URL/PIP_MIRROR_URL/g' "${config_dst}"
+        rm -rf "${config_dst}e"
+    fi
+
+    # add proxy_env to config from current environment variables
+    if [[ "${USE_PROXY}" == "true" ]]; then
+        local proxy_txt="    proxy_env:"
+        local proxy_txt_ori="${proxy_txt}"
+        # build proxy_env config from non-empty environment variable
+        [[ "${HTTP_PROXY}"  != "" ]] && proxy_txt="${proxy_txt}\n      http_proxy: \"${HTTP_PROXY}\""
+        [[ "${HTTPS_PROXY}" != "" ]] && proxy_txt="${proxy_txt}\n      https_proxy: \"${HTTPS_PROXY}\""
+        [[ "${ALL_PROXY}"   != "" ]] && proxy_txt="${proxy_txt}\n      all_proxy: \"${ALL_PROXY}\""
+        [[ "${NO_PROXY}"    != "" ]] && proxy_txt="${proxy_txt}\n      no_proxy: \"${NO_PROXY}\""
+        # remove existing proxy_env config and replace with the new one:
+        if [[ $proxy_txt != "${proxy_txt_ori}" ]]; then   # overwrite only if we have proxy settings
+            sed -ie "/^\s*proxy_env:.*$/d" "${config_dst}"
+            sed -ie "/^\s*https\?_proxy:.*$/d" "${config_dst}"
+            sed -ie "/^\s*all_proxy:.*$/d" "${config_dst}"
+            sed -ie "/^\s*no_proxy:.*$/d" "${config_dst}"
+            sed -ie "s%^\(\s\{4\}region:.\+\)$%\1\n${proxy_txt}%g" "${config_dst}"
+            rm -rf "${config_dst}e"
+        fi  # end of proxy_env insertion
+    fi  # end of USE_PROXY
+
+    # if PGVER is non-empty, upsert pg_version accordingly
+    if [[ -n "${PGVER}" && "${mode}" != "mssql" && "${mode}" != "polar" && "${mode}" != "pg19" ]]; then
+        # upsert pg_version to given PGVER
+        if grep -q 'pg_version:' "${config_dst}"; then
+            sed -ie "s/pg_version:.*$/pg_version: ${PGVER}                      # configured pg major version/g" "${config_dst}"
+        else
+            sed -ie '$i\    pg_version: '"${PGVER}                      # configured pg major version" "${config_dst}"
+        fi
+        # also replace pg18-... with pg${PGVER}-...
+        sed -ie "s/pg18-/pg${PGVER}-/g" "${config_dst}"
+        rm -rf "${config_dst}e"
+    fi
+
+    # Check if PG version is >= 17 or if C.UTF-8 locale is available, if so, use C.UTF-8 locale by default
+    local should_set_locale=false
+    
+    # Condition 1: PGVER is not set or PGVER >= 17 (pg built-in locale provider)
+    if [[ -z "${PGVER}" && "${mode}" != "mssql" && "${mode}" != "polar" || "${PGVER}" -ge 17 ]]; then
+        should_set_locale=true
+    fi
+    # Condition 2: Current environment supports UTF-8 locale
+    if locale -a 2>/dev/null | grep -iq 'C\.utf8\|C\.utf-8'; then
+        should_set_locale=true
+    fi
+    
+    # If either condition is met, append locale settings after region parameter
+    if [[ "${should_set_locale}" == "true" ]]; then
+        log_info "locale  = C.UTF-8"
+        sed -ie '/^    pg_version:/a\
+    pg_locale: C.UTF-8                  # overwrite default C local\
+    pg_lc_collate: C.UTF-8              # overwrite default C lc_collate\
+    pg_lc_ctype: C.UTF-8                # overwrite default C lc_ctype\
+' "${config_dst}"
+        rm -rf "${config_dst}e"
+    fi
+
+    # if postgresql 19+ is used, add beta repo
+    if [[ "${PGVER}" -ge 19 ]]; then
+        sed -ie "s/node,infra,pgsql/node,infra,pgsql,beta/g" "${config_dst}"
+        rm -rf "${config_dst}e"
+    fi
+
+    # replace default passwords with random ones if -g is specified
+    replace_passwords "${config_dst}"
+
+    return 0
+}
+
+#----------------------------------------------#
+# random password generation
+#----------------------------------------------#
+# generate random password with alphanumeric chars
+# works on Linux (Debian/Ubuntu/EL) and macOS
+function generate_password(){
+    local length=${1:-24}
+    LC_ALL=C tr -dc 'A-Za-z0-9' < /dev/urandom | head -c "${length}"
+}
+
+# replace default passwords with random generated ones
+function replace_passwords(){
+    local config_dst="${1}"
+
+    if [[ "${GENERATE_PASSWORD}" != "true" ]]; then
+        return 0
+    fi
+
+    log_info "generating random passwords..."
+
+    # prefix match replacement: replace value after the key
+    local -a prefix_keys=(
+        "grafana_admin_password"
+        "pg_admin_password"
+        "pg_monitor_password"
+        "pg_replication_password"
+        "patroni_password"
+        "haproxy_admin_password"
+        "minio_secret_key"
+        "etcd_root_password"
+    )
+
+    for key in "${prefix_keys[@]}"; do
+        local new_pass
+        new_pass=$(generate_password 24)
+        sed -i'' -e "s|^\([[:space:]]*${key}:\)[[:space:]]*.*|\1 ${new_pass}|" "${config_dst}"
+        printf "    ${__CG}%-24s${__CN} : ${__CC}%s${__CN}\n" "${key}" "${new_pass}"
+    done
+
+    # global string replacement: replace all occurrences
+    local -a global_passwords=(
+        "DBUser.Meta"
+        "DBUser.Viewer"
+        "S3User.Backup"
+        "S3User.Meta"
+        "S3User.Data"
+        "DBUser.Supa"
+        "Vibe.Coding"
+    )
+
+    for old_pass in "${global_passwords[@]}"; do
+        local new_pass
+        new_pass=$(generate_password 24)
+        sed -i'' -e "s|${old_pass}|${new_pass}|g" "${config_dst}"
+        printf "    ${__CG}%-24s${__CN} : ${__CC}%s${__CN}\n" "${old_pass}" "${new_pass}"
+    done
+
+    rm -rf "${config_dst}-e"  # cleanup macOS sed backup
+    log_info "random passwords generated, check and save them"
+}
+
+
+#----------------------------------------------#
+# check utils
+#----------------------------------------------#
+function check_utils(){
+    # check ansible is installed
+    if command -v ansible-playbook >/dev/null ; then
+        log_info "ansible = ready"
+    else
+        log_warn "ansible = not found, consider install ansible with ./bootstrap first"
+    fi
+}
+
+
+#--------------------------------------------------------------#
+# Main
+#--------------------------------------------------------------#
+function main(){
+    # arg parsing
+    while [ $# -gt 0 ]; do
+        case $1 in
+            -h|--help)
+                echo './configure [-c|--conf <confname>] [-i|--ip <ipaddr>] [-v|--version 18] [-r|--region <region>] [-n|--non-interactive] [-s|--skip] [-x|--proxy] [-p|--port <ssh_port>] [-g|--generate]'
+                exit 0;;
+            -c|--conf|--config) MODE="$2" ; shift;;
+            -i|--ip) PRIMARY_IP="$2" ; shift;;
+            -r|--region) REGION="$2" ; shift;;
+            -v|--ver|--version) PGVER="$2" ; shift;;
+            -o|--output) OUTPUT="$2" ; shift;;
+            -s|--skip) SKIP=true ;;
+            -n|--non-interactive) INTERACTIVE=false ;;
+            -x|--proxy) USE_PROXY=true ;;
+            -p|--port) SSH_PORT="$2"; shift;;
+            -g|--generate|--generate-password) GENERATE_PASSWORD=true ;;
+            (--) shift; break;;
+            (-*) echo "$0: error - unrecognized option $1" 1>&2; exit 1;;
+            (*) break;;
+        esac
+        shift
+    done
+
+    log_hint "configure pigsty ${PIGSTY_VERSION} begin\n"
+    # check
+    check_region          # region        = default
+    check_version         # pg_ver        = 18
+    check_kernel          # kernel        = Linux
+    check_machine         # machine       = x86_64/aarch64
+    check_package_manager # package = rpm|deb, manager = dnf|yum|zypper|apt|apt-get
+    check_vendor_version  # release       = ...,
+    check_sudo            # current_user  = NOPASSWD sudo
+    check_ssh             # current_user  = NOPASSWD ssh[:port]
+    check_proxy_env       # use_proxy     = true|false
+    check_ipaddr          # primary_ip (arg|probe|input)                    (INTERACTIVE: ask for ip)
+    check_admin           # check current_user@primary_ip nopass ssh sudo
+    check_conf            # check config template
+    check_config          # generate config according to primary_ip and mode
+    check_utils           # check ansible sshpass and other utils installed
+
+    if [[ ${OUTPUT} != "pigsty.yml" ]]; then
+        log_info "pigsty configured @ ${OUTPUT}"
+        log_warn "don't forget to check it and change passwords!"
+        log_hint "proceed with ./deploy.yml -i ${OUTPUT}\n"
+    else
+        log_info "pigsty configured"
+        log_warn "don't forget to check it and change passwords!"
+        log_hint "proceed with ./deploy.yml\n"
+    fi
+}
+
+main $@

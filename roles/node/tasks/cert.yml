@@ -1,0 +1,45 @@
+---
+#--------------------------------------------------------------#
+# add & trust ca cert to all nodes                     [node_ca]
+#--------------------------------------------------------------#
+# files/pki/ca/ca.crt should exist, which is generated role `CA`
+- name: node add and trust ca cert
+  tags: node_ca
+  block:
+
+    # make /etc/pki cert dir
+    - name: create node pki dir
+      file: path=/etc/pki state=directory
+
+    # rhel: /etc/pki , debian: /etc/ssl/certs
+    - name: add ca.crt to node
+      copy:
+        src: files/pki/ca/ca.crt
+        dest: /etc/pki/ca.crt
+        owner: root
+        group: root
+        mode: 0644
+
+    # rhel: /etc/pki/ca-trust/source/anchors/ca.crt
+    # debian: /usr/local/share/ca-certificates/ca.crt
+    - name: trust ca.crt on node
+      shell: |
+        {% if os_package|default('rpm') == 'deb' %}
+        # debian
+        rm -rf /usr/local/share/ca-certificates/ca.crt
+        ln -s /etc/pki/ca.crt /usr/local/share/ca-certificates/ca.crt
+        /usr/sbin/update-ca-certificates
+        {% else %}
+        # rhel
+        rm -rf /etc/pki/ca-trust/source/anchors/ca.crt
+        ln -s /etc/pki/ca.crt /etc/pki/ca-trust/source/anchors/ca.crt
+        /bin/update-ca-trust
+        {% endif %}
+      args: { executable: /bin/bash }
+      # ubuntu/debian may return non-0 code with warning
+      register: ca_trust_result
+      failed_when:
+        - ca_trust_result.rc != 0
+        - "'warning: skipping' not in ca_trust_result.stderr"
+
+...

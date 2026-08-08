@@ -1,0 +1,17 @@
+#!/bin/bash
+# {{ ansible_managed }}
+
+# set default user and dbname for postgresql
+export PGUSER={{ pg_admin_username }}
+export PGDATABASE=postgres
+export METADB_URL="service=meta"
+
+# grafana environment
+export GRAFANA_ENDPOINT=http://127.0.0.1/ui
+export GRAFANA_USERNAME={{ grafana_admin_username }}
+export GRAFANA_PASSWORD={{ grafana_admin_password }}
+
+# export PIGSTY_HOME if exists on home dir
+if [ -d "${HOME}/pigsty" ]; then
+  export PIGSTY_HOME="${HOME}/pigsty"
+fi

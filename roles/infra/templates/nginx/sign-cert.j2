@@ -1,0 +1,70 @@
+#!/usr/bin/env bash
+set -euo pipefail
+#==============================================================#
+# File      :   sign-cert
+# Desc      :   sign free ssl nginx certs with certbot
+# Ctime     :   2025-03-29
+# Mtime     :   {{ '%Y-%m-%d %H:%M' |strftime }}
+# Path      :   /etc/nginx/sign-cert
+# License   :   Apache-2.0 @ https://pigsty.io/docs/about/license/
+# Copyright :   2018-2026  Ruohang Feng / Vonng (rh@vonng.com)
+# {{ ansible_managed }}
+#==============================================================#
+EMAIL="{{ certbot_email     | default('your@email.com') }}"
+WEBROOT="{{ nginx_home|default('/www') + '/acme' }}"
+OPTIONS=${1-"{{ certbot_options | default('') }}"}
+{% set certbot_map = {} %}
+{% for name, item in infra_portal.items() %}
+  {% if item.certbot is defined and item.certbot %}
+    {% set cb_name = item.certbot %}
+    {% set domain_list = [item.domain] if item.domain is defined else [] %}
+    {% if item.domains is defined and item.domains %}
+      {% set domain_list = domain_list + item.domains %}
+    {% endif %}
+    {% if certbot_map[cb_name] is not defined %}
+      {% set _ = certbot_map.update({cb_name: domain_list}) %}
+    {% else %}
+      {% set _ = certbot_map[cb_name].extend(domain_list) %}
+    {% endif %}
+  {% endif %}
+{% endfor %}
+{% for cb_name, domains in certbot_map.items() %}
+{% set unique_domains = domains|unique %}
+{% set _ = certbot_map.update({cb_name: unique_domains}) %}
+{% endfor %}
+{% for cert_name, domains in certbot_map.items() %}
+# {{ cert_name }} : {{ domains|join(', ') }}
+{% endfor %}
+
+{% for cert_name, domains in certbot_map.items() %}
+###################################################
+# {{ cert_name }} : {{ domains|join(', ') }}
+###################################################
+echo "-----------------------------------------------------------------"
+echo "issue {{ cert_name }} : {{ domains|join(', ') }}"
+
+if [ -f "/etc/letsencrypt/renewal/{{ cert_name }}.conf" ]; then
+    echo "  -> Certificate exists. Attempting to expand/renew if needed..."
+    certbot certonly --non-interactive --cert-name {{ cert_name }} \
+        --webroot --webroot-path="$WEBROOT" \
+        --email "$EMAIL" --agree-tos --no-eff-email --expand \
+        {% for domain in domains %}-d "{{ domain }}" {% endfor %} $OPTIONS
+else
+    echo "  -> Certificate does not exist. Obtaining a new certificate..."
+    certbot certonly --non-interactive --cert-name {{ cert_name }} \
+        --webroot --webroot-path="$WEBROOT" \
+        --email "$EMAIL" --agree-tos --no-eff-email \
+        {% for domain in domains %}-d "{{ domain }}" {% endfor %} $OPTIONS
+fi
+
+echo "  -> Done for {{ cert_name }}: {{ domains|join(', ') }}"
+echo
+
+{% endfor %}
+
+echo "-----------------------------------------------------------------"
+echo "All certificate operations finished."
+echo "Now you can link certs with /etc/nginx/link-cert"
+/etc/nginx/link-cert
+
+ls -alh /etc/nginx/conf.d/cert

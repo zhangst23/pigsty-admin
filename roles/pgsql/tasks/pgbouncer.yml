@@ -1,0 +1,82 @@
+---
+#--------------------------------------------------------------#
+# Create Pgbouncer Dir                           [pgbouncer_dir]
+#--------------------------------------------------------------#
+- name: create pgbouncer dir
+  tags: pgbouncer_dir
+  file: path={{ item }} state=directory owner={{ pg_dbsu }} group=postgres mode=0750
+  with_items:
+    - /etc/pgbouncer
+    - "{{ pgbouncer_log_dir }}"
+
+#--------------------------------------------------------------#
+# Config Pgbouncer                            [pgbouncer_config]
+#--------------------------------------------------------------#
+- name: config pgbouncer
+  tags: pgbouncer_config
+  block:
+
+    - name: config pgbouncer
+      template: src={{ item.src }} dest={{ item.dest }} owner={{ item.owner }} group={{ item.group }} mode={{ item.mode }}
+      with_items:
+        - { src: "pgbouncer.svc"      ,dest: "{{ exporter_svc_path }}"        ,owner: "root"          ,group: root     ,mode: "0644" }
+        - { src: "pgbouncer.ini"      ,dest: "/etc/pgbouncer/pgbouncer.ini"   ,owner: "{{ pg_dbsu }}" ,group: postgres ,mode: "0640" }
+        - { src: "pgbouncer.database" ,dest: "/etc/pgbouncer/database.txt"    ,owner: "{{ pg_dbsu }}" ,group: postgres ,mode: "0600" }
+        - { src: "pgbouncer.useropts" ,dest: "/etc/pgbouncer/useropts.txt"    ,owner: "{{ pg_dbsu }}" ,group: postgres ,mode: "0600" }
+      vars:
+        exporter_svc_path: "{{ systemd_dir|default('/usr/lib/systemd/system') }}/pgbouncer.service"
+
+    - name: config pgbouncer hba rules
+      tags: pgbouncer_hba
+      template: src=pgbouncer.hba dest=/etc/pgbouncer/pgb_hba.conf owner={{ pg_dbsu }} group=postgres mode=0600
+
+    # retrieve default user passwords and business user passwords in AUTO mode
+    - name: create pgbouncer userlist
+      tags: pgbouncer_user
+      become_user: "{{ pg_dbsu }}"
+      ignore_errors: true
+      shell: |
+        export PGHOST={{ pg_localhost }}
+        export PGPORT={{ pg_port }}
+        /bin/bash /pg/bin/pgb-user "{{ pg_dbsu }}" NULL
+        /bin/bash /pg/bin/pgb-user "{{ pg_monitor_username }}"
+        /bin/bash /pg/bin/pgb-user "{{ pg_admin_username }}"
+        
+        # Add business users to pgbouncer
+        {% for user in pg_users|default([]) %}
+        {% if (user.state is not defined or user.state != 'absent') and user.pgbouncer is defined and user.pgbouncer|bool and not pgbouncer_auth_query|bool %}
+        /bin/bash /pg/bin/pgb-user '{{ user.name }}' AUTO
+        {% endif %}
+        {% endfor %}
+      args: { executable: /bin/bash }
+
+
+#--------------------------------------------------------------#
+# Launch Pgbouncer                            [pgbouncer_launch]
+#--------------------------------------------------------------#
+- name: launch pgbouncer
+  tags: pgbouncer_launch
+  block:
+    - name: launch pgbouncer systemd service
+      tags: pgbouncer_restart
+      systemd: name=pgbouncer state=restarted enabled=yes daemon_reload=yes
+    - name: wait for pgbouncer service online
+      wait_for: host=127.0.0.1 port={{ pgbouncer_port|default(6432) }} state=started timeout=10
+
+
+#--------------------------------------------------------------#
+# Reload Pgbouncer                            [pgbouncer_reload]
+#--------------------------------------------------------------#
+- name: reload pgbouncer
+  tags: pgbouncer_reload
+  block:
+
+    - name: reload pgbouncer
+      when: pg_reload|bool
+      systemd: name=pgbouncer state=reloaded enabled=yes daemon_reload=yes
+    - name: check pgbouncer ready
+      become_user: "{{ pg_dbsu }}"
+      shell: |
+        {{ pg_bin_dir }}/pg_isready -h /var/run/postgresql -p {{ pgbouncer_port }}
+
+...

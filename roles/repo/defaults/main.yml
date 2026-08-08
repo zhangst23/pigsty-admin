@@ -1,0 +1,41 @@
+---
+#-----------------------------------------------------------------
+# REPO
+#-----------------------------------------------------------------
+repo_enabled: true                # create local yum repo on this infra node?
+repo_home: /www                   # repo home dir, /www by default (soft link to nginx_data)
+repo_name: pigsty                 # repo name, pigsty by default
+repo_endpoint: http://${admin_ip}:80 # access point to this repo by domain or ip:port
+repo_remove: true                 # remove existing upstream repo
+repo_modules: infra,node,pgsql    # which repo modules are installed in repo_upstream
+#repo_upstream: []                # this default vault is pick from repo_upstream_default according to `os_package` if not explicitly defined
+#repo_packages: []                # default packages to be downloaded to local repo, use repo_upstream_default if not explicitly defined
+#repo_extra_packages: []          # extra packages to be downloaded to local repo
+repo_url_packages: []             # extra packages from url
+
+#-----------------------------------------------------------------
+# INTERNAL
+#-----------------------------------------------------------------
+repo_exists: false
+#-----------------------------------------------------------------
+# META (Reference)
+#-----------------------------------------------------------------
+version: v4.4.0                   # pigsty version string
+region: default                   # choose a region from where to download repo pkgs: default|china|europe
+proxy_env:                        # global proxy env when downloading packages
+  no_proxy: "localhost,127.0.0.1,10.0.0.0/8,192.168.0.0/16,*.pigsty,*.aliyun.com,mirrors.*,*.myqcloud.com,*.tsinghua.edu.cn"
+#-----------------------------------------------------------------
+# NODE (Reference)
+#-----------------------------------------------------------------
+node_data: /data                  # node main data directory, /data by default
+#-----------------------------------------------------------------
+# NGINX (Reference)
+#-----------------------------------------------------------------
+nginx_port: 80                    # nginx listen port, 80 by default
+nginx_home: /www                  # nginx content dir, `/www` by default (soft link to nginx_data)
+nginx_data: /data/nginx           # nginx actual data dir, /data/nginx by default
+#-----------------------------------------------------------------
+# PG_INSTALL (Reference)
+#-----------------------------------------------------------------
+pg_version: 18                    # default postgresql major version
+...

@@ -1,0 +1,111 @@
+---
+#--------------------------------------------------------------#
+# Node Feature Flags                              [node_feature]
+#--------------------------------------------------------------#
+- name: set node features
+  tags: node_feature
+  ignore_errors: true
+  block:
+
+    # - disable numa - #
+    - name: disable node numa
+      when: node_disable_numa
+      script: disable_numa.sh
+
+    # disable swap, do so if you have enough memory or run kubernetes #
+    - name: disable node swap
+      when: node_disable_swap|bool
+      command: swapoff -a
+
+    - name: unmount node swap fs
+      when: node_disable_swap|bool
+      mount: name={{ item }} fstype=swap state=absent
+      with_items: [swap, none]
+
+    # - static network - #
+    - name: setup node static network
+      when: node_static_network|bool
+      script: static_network.sh
+
+    # - enable disk prefetch - #
+    - name: configure disk prefetch
+      when: node_disk_prefetch|bool
+      script: disk_prefetch.sh
+
+
+#--------------------------------------------------------------#
+# Node Kernel Modules                              [node_kernel]
+#--------------------------------------------------------------#
+- name: setup node kernel modules
+  tags: node_kernel
+  block:
+
+    - name: enable kernel module
+      modprobe: name={{ item }} state=present
+      with_items: "{{ node_kernel_modules }}"
+
+    - name: enable kernel module on system boot
+      copy: content={{ item }} dest=/etc/modules-load.d/{{ item }}.conf
+      with_items: "{{ node_kernel_modules }}"
+
+
+#--------------------------------------------------------------#
+# Setup Node Tuned Profile                         [node_tuned]
+#--------------------------------------------------------------#
+- name: tune node performance
+  tags: node_tune
+  when: node_tune is defined and node_tune != 'none'
+  block:
+
+    - name: create tuned profile dir
+      file: path=/etc/tuned/{{ item }} state=directory mode=0755
+      with_items: [ oltp, olap, crit, tiny ]
+
+    - name: render tuned profiles
+      template: src=tuned-{{ item }}.conf dest=/etc/tuned/{{ item }}/tuned.conf mode=0644
+      with_items: [ oltp, olap, crit, tiny ]
+
+    # if node_hugepage_count is given, use it (but can not exceed 90% of memory)
+    # otherwise, if node_hugepage_ratio is given, use it (can not exceed 90% mem too)
+    - name: render hugepage sysctl parameter
+      copy:
+        dest: /etc/sysctl.d/hugepage.conf
+        content: |
+          {% if node_hugepage_count is defined and node_hugepage_count|int > 0 %}
+          {% if node_hugepage_count|float >= node_mem_bytes|float / 2097152.0 * 0.90 %}
+          vm.nr_hugepages = {{ (node_mem_bytes|int / 2097152.0 * 0.90 )|round(0, 'ceil')|int }}
+          {% else %}
+          vm.nr_hugepages = {{ node_hugepage_count }}
+          {% endif %}
+          {% else %}
+          {% if node_hugepage_ratio is defined and node_hugepage_ratio|float > 0 and node_hugepage_ratio|float < 0.90 %}
+          vm.nr_hugepages = {{ (node_mem_bytes|int / 2097152.0 * node_hugepage_ratio|float )|round(0, 'ceil')|int }}
+          {% else %}
+          vm.nr_hugepages = 0
+          {% endif %}
+          {% endif %}
+
+    - name: activate tuned profile
+      tags: node_tune_active
+      ignore_errors: true
+      shell: |
+        systemctl restart tuned 2>/dev/null || true
+        tuned-adm profile {{ node_tune }}
+        sysctl -p /etc/sysctl.d/hugepage.conf
+      args: { executable: /bin/bash }
+
+#--------------------------------------------------------------#
+# Change Node sysctl parameters                    [node_sysctl]
+#--------------------------------------------------------------#
+- name: change sysctl parameter
+  tags: node_sysctl
+  ignore_errors: true
+  when: node_sysctl_params|length > 0
+  sysctl:
+    name: "{{ item.key }}"
+    value: "{{ item.value }}"
+    sysctl_set: yes
+    state: present
+    reload: yes
+  with_dict: "{{ node_sysctl_params }}"
+...

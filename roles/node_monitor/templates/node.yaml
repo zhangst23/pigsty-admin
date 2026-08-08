@@ -1,0 +1,30 @@
+---
+# vector config for node sys logs
+
+sources:
+  syslog_raw:
+    type: journald
+    current_boot_only: true
+    since_now: false
+
+transforms:
+  syslog_logs:
+    type: remap
+    inputs: [syslog_raw]
+    source: |
+      unit = replace(to_string(._SYSTEMD_UNIT) ?? "", ".service", "")
+      level = to_syslog_level(to_int(.PRIORITY) ?? 6) ?? "info"
+      . = {
+        "_time": format_timestamp(.timestamp, "%Y-%m-%dT%H:%M:%S%.fZ") ?? "",
+        "message": .message,
+        "app": .SYSLOG_IDENTIFIER || ._COMM || "unknown",
+        "unit": unit,
+        "pid": to_string(._PID) ?? "",
+        "level": level,
+        "p": .PRIORITY,
+        "ip": "{{ inventory_hostname }}",
+        "ins": "{{ nodename }}",
+        "cls": "{{ node_cluster }}",
+        "job": "syslog"
+      }
+...

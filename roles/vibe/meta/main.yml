@@ -1,0 +1,23 @@
+---
+galaxy_info:
+  role_name: vibe
+  description: deploy development tools (claude, optional codex, code-server, jupyter) on pigsty managed nodes
+  min_ansible_version: "2.9"
+  author: 'Ruohang Feng / @Vonng / rh@vonng.com'
+  license: Apache-2.0
+  platforms:
+    - name: EL
+      versions: [all]
+    - name: Ubuntu
+      versions: [all]
+    - name: Debian
+      versions: [all]
+  galaxy_tags:
+    - pigsty
+    - vibe
+    - claude
+    - codex
+    - code-server
+    - jupyter
+    - devbox
+...

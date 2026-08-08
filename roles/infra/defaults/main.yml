@@ -1,0 +1,184 @@
+---
+#-----------------------------------------------------------------
+# INFRA_META
+#-----------------------------------------------------------------
+version: v4.4.0                   # pigsty version string
+admin_ip: 10.10.10.10             # admin node ip address, overwritten by configure
+region: default                   # upstream mirror region: default,china,europe
+language: en                      # default language, en by default, could be zh
+proxy_env: { no_proxy: "localhost,127.0.0.1,10.0.0.0/8,192.168.0.0/16,*.pigsty,*.aliyun.com,mirrors.*,*.myqcloud.com,*.tsinghua.edu.cn" }
+
+#-----------------------------------------------------------------
+# INFRA_IDENTITY
+#-----------------------------------------------------------------
+#infra_seq: 1                     # infra node identity, explicitly required
+infra_portal:                     # infra services exposed via portal
+  home : { domain: i.pigsty }     # default home server definition
+infra_data: /data/infra           # default data path for infrastructure data
+infra_services:                   # home page navigation entries
+  - { name: Metrics            ,url: '/vmetrics/vmui/'         ,desc: 'VictoriaMetrics Query UI'    ,icon: 'metrics'  ,name_cn: '指标查询' ,desc_cn: 'VictoriaMetrics 指标查询界面' }
+  - { name: Logs               ,url: '/vlogs/select/vmui/'     ,desc: 'VictoriaLogs Query UI'       ,icon: 'logs'     ,name_cn: '日志查询' ,desc_cn: 'VictoriaLogs 日志查询界面'    }
+  - { name: Traces             ,url: '/vtraces/select/vmui/'   ,desc: 'VictoriaTraces Query UI'     ,icon: 'traces'   ,name_cn: '链路追踪' ,desc_cn: 'VictoriaTraces 链路查询界面'  }
+  - { name: Monitor Targets    ,url: '/vmetrics/targets'       ,desc: 'Prometheus Scrape Targets'   ,icon: 'target'   ,name_cn: '监控目标' ,desc_cn: 'VictoriaMetrics 监控对象列表' }
+  - { name: Alert Rules        ,url: '/vmalert/vmalert/groups' ,desc: 'VMAlert alert/record Rules'  ,icon: 'alert'    ,name_cn: '告警规则' ,desc_cn: 'VMAlert 告警规则管理'         }
+  - { name: Alert Manager      ,url: '/alertmgr/#/alerts'      ,desc: 'Alert Manage & Silence'      ,icon: 'alertmgr' ,name_cn: '告警管理' ,desc_cn: 'AlertManager 告警管理与屏蔽'  }
+  - { name: CA Certificate     ,url: '/ca.crt'                 ,desc: 'Self-Signed CA Certificate'  ,icon: 'lock'     ,name_cn: 'CA 证书'  ,desc_cn: 'Pigsty 自签CA根证书' }
+  - { name: Software Repo      ,url: '/pigsty'                 ,desc: 'Local YUM/APT Repository'    ,icon: 'package'  ,name_cn: '软件仓库' ,desc_cn: '本地 YUM/APT 软件源'  }
+  - { name: Explain Visualizer ,url: '/pev'                    ,desc: 'Postgres EXPLAIN Visualizer' ,icon: 'search'   ,name_cn: '执行计划' ,desc_cn: 'PG 执行计划可视化工具' }
+infra_extra_services: []          # extra services to be added on infra home page
+
+#-----------------------------------------------------------------
+# INFRA_PACKAGE
+#-----------------------------------------------------------------
+#infra_packages: []               # packages to be installed on infra nodes
+
+#-----------------------------------------------------------------
+# NGINX
+#-----------------------------------------------------------------
+nginx_enabled: true               # enable nginx on this infra node?
+nginx_clean: false                # clean existing nginx config during init?
+nginx_exporter_enabled: true      # enable nginx_exporter on this infra node?
+nginx_exporter_port: 9113         # nginx_exporter listen port, 9113 by default
+nginx_sslmode: enable             # nginx ssl mode? disable,enable,enforce
+nginx_cert_validity: 397d         # nginx self-signed cert validity, 397d by default
+nginx_home: /www                  # nginx content dir, `/www` by default (soft link to nginx_data)
+nginx_data: /data/nginx           # nginx actual data dir, /data/nginx by default
+nginx_users: {}                   # nginx basic auth users: name and pass dict
+nginx_port: 80                    # nginx listen port, 80 by default
+nginx_ssl_port: 443               # nginx ssl listen port, 443 by default
+certbot_sign: false               # sign nginx cert with certbot during setup?
+certbot_email: your@email.com     # certbot email address, used for free ssl
+certbot_options: ''               # certbot extra options
+
+#-----------------------------------------------------------------
+# DNS
+#-----------------------------------------------------------------
+dns_enabled: true                 # setup dnsmasq on this infra node?
+dns_port: 53                      # dns server listen port, 53 by default
+dns_records:                      # dynamic dns records resolved by dnsmasq
+  - "${admin_ip} i.pigsty"
+  - "${admin_ip} m.pigsty supa.pigsty api.pigsty adm.pigsty cli.pigsty ddl.pigsty"
+
+#-----------------------------------------------------------------
+# VICTORIA
+#-----------------------------------------------------------------
+vmetrics_enabled: true            # enable victoria-metrics on this infra node?
+vmetrics_clean: false             # whether clean existing victoria metrics data during init?
+vmetrics_port: 8428               # victoria-metrics listen port, 8428 by default
+vmetrics_scrape_interval: 10s     # victoria global scrape interval, 10s by default
+vmetrics_scrape_timeout: 8s       # victoria global scrape timeout, 8s by default
+vmetrics_options: >-
+  -retentionPeriod=15d
+  -promscrape.fileSDCheckInterval=5s
+vlogs_enabled: true               # enable victoria-logs on this infra node?
+vlogs_clean: false                # clean victoria-logs data during init?
+vlogs_port: 9428                  # victoria-logs listen port, 9428 by default
+vlogs_options: >-
+  -retentionPeriod=15d
+  -retention.maxDiskSpaceUsageBytes=50GiB
+  -insert.maxLineSizeBytes=1MB
+  -search.maxQueryDuration=120s
+vtraces_enabled: true             # enable victoria-traces on this infra node?
+vtraces_clean: false              # clean victoria-traces data during init?
+vtraces_port: 10428               # victoria-traces listen port, 10428 by default
+vtraces_options: >-
+  -retentionPeriod=15d
+  -retention.maxDiskSpaceUsageBytes=50GiB
+vmalert_enabled: true             # enable vmalert on this infra node?
+vmalert_port: 8880                # vmalert listen port, 8880 by default
+vmalert_options: ''              # vmalert extra server options
+
+#-----------------------------------------------------------------
+# PROMETHEUS
+#-----------------------------------------------------------------
+blackbox_enabled: true            # setup blackbox_exporter on this infra node?
+blackbox_port: 9115               # blackbox_exporter listen port, 9115 by default
+blackbox_options: ''              # blackbox_exporter extra server options
+alertmanager_enabled: true        # setup alertmanager on this infra node?
+alertmanager_port: 9059           # alertmanager listen port, 9059 by default
+alertmanager_options: ''          # alertmanager extra server options
+exporter_metrics_path: /metrics   # exporter metric path, `/metrics` by default
+
+#-----------------------------------------------------------------
+# GRAFANA
+#-----------------------------------------------------------------
+grafana_enabled: true             # enable grafana on this infra node?
+grafana_port: 3000                # default listen port for grafana
+grafana_clean: false              # clean grafana data during init?
+grafana_admin_username: admin     # grafana admin username, `admin` by default
+grafana_admin_password: pigsty    # grafana admin password, `pigsty` by default
+grafana_auth_proxy: false         # enable grafana auth proxy?
+grafana_pgurl: ''                 # external postgres database url for grafana if given
+grafana_view_password: DBUser.Viewer # password for grafana meta pg datasource
+
+#-----------------------------------------------------------------
+# EXPORTER & PORT (Reference)
+#-----------------------------------------------------------------
+node_exporter_port: 9100          # node exporter listen port, 9100 by default
+haproxy_exporter_port: 9101       # haproxy admin/exporter port, 9101 by default
+vip_exporter_port: 9650           # keepalived exporter listen port, 9650 by default
+vector_port: 9598                 # vector metrics port, 9598 by default
+pg_exporter_port: 9630            # pg_exporter listen port, 9630 by default
+pgbouncer_exporter_port: 9631     # pgbouncer_exporter listen port, 9631 by default
+pgbackrest_exporter_port: 9854    # pgbackrest_exporter listen port, 9854 by default
+#-----------------------------------------------------------------
+# INTERNAL
+#-----------------------------------------------------------------
+nginx_cert_exists: false
+#-----------------------------------------------------------------
+# CA (Reference)
+#-----------------------------------------------------------------
+cert_validity: 7300d              # cert validity, 20 years by default
+#-----------------------------------------------------------------
+# REPO (Reference)
+#-----------------------------------------------------------------
+repo_name: pigsty                 # repo name, pigsty by default
+#-----------------------------------------------------------------
+# NODE (Reference)
+#-----------------------------------------------------------------
+node_data: /data                  # node main data directory, /data by default
+node_admin_enabled: true          # create a admin user on target node?
+node_admin_username: dba          # name of node admin user, `dba` by default
+#-----------------------------------------------------------------
+# ETCD (Reference)
+#-----------------------------------------------------------------
+etcd_port: 2379                   # etcd client port, 2379 by default
+etcd_root_password: Etcd.Root     # etcd root password for RBAC, change it!
+#-----------------------------------------------------------------
+# DOCKER (Reference)
+#-----------------------------------------------------------------
+docker_exporter_port: 9323        # docker metrics exporter port, 9323 by default
+#-----------------------------------------------------------------
+# PG_INSTALL (Reference)
+#-----------------------------------------------------------------
+pg_version: 18                    # postgres major version to be installed, 18 by default
+#-----------------------------------------------------------------
+# PG_BOOTSTRAP (Reference)
+#-----------------------------------------------------------------
+pg_namespace: /pg                 # top level key namespace in etcd, used by patroni & vip
+patroni_port: 8008                # patroni listen port, 8008 by default
+patroni_ssl_enabled: false        # secure patroni RestAPI communications with SSL?
+#-----------------------------------------------------------------
+# PG_BUSINESS (Reference)
+#-----------------------------------------------------------------
+pg_replication_username: replicator         # default replication username
+pg_replication_password: DBUser.Replicator  # default replication password
+pg_admin_username: dbuser_dba               # default admin username
+pg_admin_password: DBUser.DBA               # default admin password
+pg_monitor_username: dbuser_monitor         # default monitor username
+pg_monitor_password: DBUser.Monitor         # default monitor password
+patroni_username: postgres                  # patroni rest api username
+patroni_password: Patroni.API               # patroni rest api password
+#-----------------------------------------------------------------
+# Kafka Exporter (Reference)
+#-----------------------------------------------------------------
+kafka_exporter_port: 9308         # kafka metrics exporter port, 9308 by default
+mongo_exporter_port: 9216         # mongo metrics exporter port, 9308 by default
+mysql_exporter_port: 9104         # mongo metrics exporter port, 9308 by default
+redis_exporter_port: 9121         # mongo metrics exporter port, 9308 by default
+#--------------------------------------------------------------#
+# VIBE (Reference)
+#--------------------------------------------------------------#
+code_port: 8443                   # code-server listen port
+jupyter_port: 8888                # jupyter lab listen port
+...

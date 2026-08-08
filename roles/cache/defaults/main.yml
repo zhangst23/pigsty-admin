@@ -1,0 +1,28 @@
+---
+#-----------------------------------------------------------------
+# CACHE
+#-----------------------------------------------------------------
+cache_pkg_name: 'pigsty-pkg-${version}.${os}.${arch}.tgz' # cache offline package filename pattern
+cache_pkg_dir: 'dist/${version}'  # where to store the cached package? dist/${version} by default
+cache_repo: pigsty                # target repo(s) to be cached, use `,` to separate multiple repos
+
+#-----------------------------------------------------------------
+# REPO (Reference)
+#-----------------------------------------------------------------
+repo_enabled: true                # create local yum repo on this infra node?
+repo_home: /www                   # repo home dir, /www by default (soft link to nginx_data)
+repo_name: pigsty                 # repo name, pigsty by default
+#-----------------------------------------------------------------
+# META (Reference)
+#-----------------------------------------------------------------
+version: v4.4.0                   # pigsty version string
+#-----------------------------------------------------------------
+# NODE (Reference)
+#-----------------------------------------------------------------
+node_data: /data                  # node main data directory, /data by default
+#-----------------------------------------------------------------
+# NGINX (Reference)
+#-----------------------------------------------------------------
+nginx_home: /www                  # nginx content dir, `/www` by default (soft link to nginx_data)
+nginx_data: /data/nginx           # nginx actual data dir, /data/nginx by default
+...

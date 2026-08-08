@@ -1,0 +1,180 @@
+#!/usr/bin/env ansible-playbook
+---
+#==============================================================#
+# File      :   redis.yml
+# Desc      :   init redis cluster / node / instance
+# Ctime     :   2020-11-22
+# Mtime     :   2025-12-31
+# Path      :   redis.yml
+# Docs      :   https://pigsty.io/docs/redis/playbook
+# License   :   Apache-2.0 @ https://pigsty.io/docs/about/license/
+# Copyright :   2018-2026  Ruohang Feng / Vonng (rh@vonng.com)
+#==============================================================#
+
+
+#---------------------------------------------------------------
+# usage
+#---------------------------------------------------------------
+# How to create redis clusters ?
+#
+#  init all redis instances on group <cluster>
+#   ./redis.yml -l <cluster>    # create redis cluster
+#
+#  init redis node (package,dir,exporter)
+#   ./redis.yml -l 10.10.10.10    # create redis cluster
+#
+#  init all redis instances specific node
+#   ./redis.yml -l 10.10.10.10    # create redis cluster
+#
+#  init one specific instance 10.10.10.10:6379
+#   ./redis.yml -l 10.10.10.11 -e redis_port=6379 -t redis
+#
+#--------------------------------------------------------------#
+# Utils
+#--------------------------------------------------------------#
+#
+#  bin/redis-add redis-ms          # create redis cluster 'redis-ms'
+#  bin/redis-add 10.10.10.10       # create redis node '10.10.10.10'
+#  bin/redis-add 10.10.10.10 6379  # create redis instance '10.10.10.10:6379'
+#
+#--------------------------------------------------------------#
+# Tasks
+#--------------------------------------------------------------#
+# redis_node        : init redis node
+#   - redis_install : install redis & redis_exporter
+#   - redis_user    : create os user redis
+#   - redis_dir     : redis fhs directories
+# redis_exporter    : config and launch redis_exporter
+#   - redis_exporter_config  : generate redis_exporter config
+#   - redis_exporter_launch  : launch redis_exporter
+# redis_instance    : config and launch redis cluster/node/instance
+#   - redis_config  : generate redis instance config
+#   - redis_launch  : launch redis instance
+# redis_register    : register redis metrics & logs
+#   - add_metrics   : register redis metrics to victoria
+#   - add_logs      : register redis logs to vector
+# redis_ha          : setup redis sentinel
+# redis_join        : join redis cluster
+#--------------------------------------------------------------#
+
+
+#--------------------------------------------------------------#
+# Init Redis Cluster / Node / Instance                   [redis]
+#--------------------------------------------------------------#
+- name: REDIS
+  hosts: all
+  become: true
+  gather_facts: no
+  tags: redis
+  roles:
+    - { role: node_id, when: redis_cluster is defined }
+    - { role: redis,   when: redis_cluster is defined }
+
+
+#--------------------------------------------------------------#
+# setup redis sentinel targets                        [redis_ha]
+#--------------------------------------------------------------#
+- name: REDIS HA
+  hosts: all
+  become: true
+  gather_facts: no
+  tags: redis-ha
+  tasks:
+
+    - name: skip if not a redis sentinel cluster
+      when: redis_port is defined or redis_mode|default('standalone') != 'sentinel' or redis_sentinel_monitor is not defined or redis_sentinel_monitor|length == 0
+      meta: end_host
+
+    - name: setup redis ha with sentinel
+      ignore_errors: true
+      when: redis_port is not defined
+      run_once: true
+      block:
+
+        - name: render redis sentinel monitor commands
+          copy:
+            dest: /tmp/{{ redis_cluster }}.monitor
+            mode: 0700
+            content: |
+              {% macro abort(error) %}{{ None['[ERROR] ' ~ error][0] }}{% endmacro %}
+              {% for master in redis_sentinel_monitor %}
+              {% if 'name' not in master or 'host' not in master %}
+              {{ abort("redis_sentinel_monitor require master name and host") }}
+              {% endif %}
+              SENTINEL REMOVE {{ master.name }}
+              {% if not master.remove|default(false) %}
+              SENTINEL MONITOR {{ master.name }} {{ master.host }} {{ master.port|default(6379) }} {{ master.quorum|default(1) }}
+              {% endif %}
+              {% if 'password' in master and master.password != '' %}
+              SENTINEL SET {{ master.name }} auth-pass {{ master.password }}
+              {% endif %}
+              {% endfor %}
+
+        - name: render redis sentinel monitor scripts
+          copy:
+            dest: /tmp/{{ redis_cluster }}-ha.sh
+            mode: 0700
+            content: |
+              {% set redis_meta = hostvars|json_query(cluster_query) %}
+              #!/bin/bash
+              {% for i in redis_meta %}
+              {% for port, _ in i.redis_instances.items() %}
+              cat /tmp/{{ redis_cluster }}.monitor | redis-cli -h {{ i.inventory_hostname }} -p {{ port }}{{ (' -a ' ~ (i.redis_password | quote)) if (i.redis_password is defined and i.redis_password != '') else '' }}
+              {% endfor %}
+              {% endfor %}
+          vars: { cluster_query: "[@.*][0][?redis_cluster=='{{ redis_cluster }}']" }
+
+        - name: execute redis cluster sentinel monitor script
+          shell: "/tmp/{{ redis_cluster }}-ha.sh"
+          args: { executable: /bin/bash }
+
+
+#--------------------------------------------------------------#
+# join redis instances for cluster                  [redis_join]
+#--------------------------------------------------------------#
+- name: REDIS JOIN
+  hosts: all
+  become: true
+  gather_facts: no
+  tags: redis-join
+  tasks:
+
+    - name: skip if not a redis native cluster
+      when: redis_port is defined or redis_mode|default('standalone') != 'cluster'
+      meta: end_host
+
+    - name: perform redis cluster join
+      run_once: true
+      block:
+
+        - name: fetch redis cluster membership
+          when: redis_port is not defined
+          connection: local
+          set_fact:
+            redis_cluster_members={{ hostvars| json_query(redis_cluster_members_query) }}
+          vars:
+            redis_cluster_members_query: "[@.*][0][?redis_cluster=='{{ redis_cluster }}']"
+
+        - name: render redis cluster join script
+          when: redis_port is not defined
+          copy:
+            dest: /tmp/{{ redis_cluster }}-join.sh
+            mode: 0755
+            owner: root
+            content: |
+              #!/bin/bash
+              /bin/redis-cli {% if redis_password is defined and redis_password != '' %}-a {{ redis_password }}{% endif %} --cluster create --cluster-yes \
+              {% for node in redis_cluster_members %}
+              {% for port in node.redis_instances %}
+                {{ node.inventory_hostname }}:{{ port }} \
+              {% endfor %}
+              {% endfor %}
+                --cluster-replicas {{ redis_cluster_replicas|default(1) }}
+
+        - name: execute redis cluster join script
+          ignore_errors: true
+          run_once: true
+          when: redis_port is not defined
+          shell: "/tmp/{{ redis_cluster }}-join.sh"
+          args: { executable: /bin/bash }
+...

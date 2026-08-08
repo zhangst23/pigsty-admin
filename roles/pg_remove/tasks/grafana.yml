@@ -1,0 +1,23 @@
+---
+#--------------------------------------------------------------#
+# Remove postgres datasource from Grafana              [grafana]
+#--------------------------------------------------------------#
+# remove datasource using grafana datasource API on all infra nodes
+- name: remove grafana datasource {{ database.name | default(database) }}
+  tags: [ grafana, pg_deregister, deregister, rm_ds ]
+  delegate_to: '{{ infra_host }}'
+  loop: '{{ groups["infra"] | default([]) }}'
+  loop_control:
+    loop_var: infra_host
+  ignore_errors: true
+  when: database.register_datasource is not defined or database.register_datasource|bool
+  shell: |
+    curl -X DELETE "http://127.0.0.1:{{ gf_port }}/ui/api/datasources/name/{{ ds_name }}" -u "{{ gf_user }}:{{ gf_pass }}" -H 'Content-Type: application/json'
+  args: { executable: /bin/bash }
+  vars:
+    ds_name: "{{ pg_cluster }}-{{ pg_seq }}.{{ database.name }}"
+    gf_port: "{{ grafana_port|default(3000) }}"
+    gf_user: "{{ grafana_admin_username|default('admin') }}"
+    gf_pass: "{{ grafana_admin_password|default('pigsty') }}"
+
+...

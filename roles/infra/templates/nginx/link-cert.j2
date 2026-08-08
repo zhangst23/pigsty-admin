@@ -1,0 +1,43 @@
+#!/bin/bash
+set -euo pipefail
+#==============================================================#
+# File      :   link-cert
+# Desc      :   link nginx certs, (use certbot or fallback to pigsty)
+# Ctime     :   2025-03-29
+# Mtime     :   {{ '%Y-%m-%d %H:%M' |strftime }}
+# Path      :   /etc/nginx/link-cert
+# License   :   Apache-2.0 @ https://pigsty.io/docs/about/license/
+# Copyright :   2018-2026  Ruohang Feng / Vonng (rh@vonng.com)
+# {{ ansible_managed }}
+#==============================================================#
+
+{% for name, item in infra_portal.items() %}
+{% if item.domain is defined and item.domain != '' %}
+#===============================
+# {{ name }} : {{ item.domain }}{% if 'domains' in item and item.domains is sequence %}{% for domain in item.domains %} {{ domain }}{% endfor %}{% endif %};
+
+{% if item.certbot is defined and item.certbot != '' %}
+if [[ -f "/etc/letsencrypt/live/{{ item.certbot }}/privkey.pem" ]]; then
+    # {{ name }} : {{ item.domain }} <--- /etc/letsencrypt/live/{{ item.certbot }}/
+    ln -sfn "/etc/letsencrypt/live/{{ item.certbot }}/fullchain.pem" "/etc/nginx/conf.d/cert/{{ item.domain }}.crt"
+    ln -sfn "/etc/letsencrypt/live/{{ item.certbot }}/privkey.pem"   "/etc/nginx/conf.d/cert/{{ item.domain }}.key"
+else
+    # {{ name }} : {{ item.domain }} <--- /etc/nginx/conf.d/cert/pigsty
+    ln -sfn "/etc/nginx/conf.d/cert/pigsty.crt" "/etc/nginx/conf.d/cert/{{ item.domain }}.crt"
+    ln -sfn "/etc/nginx/conf.d/cert/pigsty.key" "/etc/nginx/conf.d/cert/{{ item.domain }}.key"
+fi
+
+{% else %}
+# {{ name }} : {{ item.domain }} <--- /etc/nginx/conf.d/cert/pigsty
+ln -sfn "/etc/nginx/conf.d/cert/pigsty.crt" "/etc/nginx/conf.d/cert/{{ item.domain }}.crt"
+ln -sfn "/etc/nginx/conf.d/cert/pigsty.key" "/etc/nginx/conf.d/cert/{{ item.domain }}.key"
+
+{% endif %}
+{% else %}
+#===============================
+# {{ name }} : skip due to domain not configured
+{% endif %}
+{% endfor %}
+
+echo "link nginx cert, check with ls -alh /etc/nginx/conf.d/cert"
+ls -alh /etc/nginx/conf.d/cert

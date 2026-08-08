@@ -1,0 +1,108 @@
+---
+#--------------------------------------------------------------#
+# Create etcd user for PG cluster                      [pg_etcd]
+#--------------------------------------------------------------#
+# Note: run_once without pg_role condition to ensure execution
+# The task is idempotent so running on any host is safe
+- name: create etcd user for pg cluster
+  tags: [ pg_conf, pg_etcd ]
+  when:
+    - groups['etcd'] is defined
+    - groups['etcd'] | length > 0
+    - pg_role == 'primary'
+    - pg_cluster != 'root' # fail if you use root as pg cluster name
+    - etcd_root_password is defined
+  delegate_to: "{{ groups['etcd'][0] }}"
+  environment:
+    ETCDCTL_ENDPOINTS: "{{ groups['etcd'] | map('regex_replace', '^(.*)$', 'https://\\1:' + etcd_port|string) | join(',') }}"
+    ETCDCTL_CACERT: "/etc/etcd/ca.crt"
+    ETCDCTL_CERT: "/etc/etcd/server.crt"
+    ETCDCTL_KEY: "/etc/etcd/server.key"
+    ETCDCTL_USER: "root:{{ etcd_root_password }}"
+  vars:
+    _etcd_user: "{{ pg_shard if pg_mode == 'citus' else pg_cluster }}"
+    _etcd_pass: "{{ pg_etcd_password if pg_etcd_password != '' else (pg_shard if pg_mode == 'citus' else pg_cluster) }}"
+  shell: |
+    ETCD_USER="{{ _etcd_user }}"
+    ETCD_PASS="{{ _etcd_pass }}"
+    KEY_PREFIX="{{ pg_namespace }}/{{ _etcd_user }}/"
+
+    # create role (idempotent)
+    etcdctl role add "${ETCD_USER}" 2>/dev/null || true
+
+    # grant prefix permission (idempotent)
+    etcdctl role grant-permission "${ETCD_USER}" --prefix=true readwrite "${KEY_PREFIX}" 2>/dev/null || true
+
+    # create or update user
+    if etcdctl user get "${ETCD_USER}" >/dev/null 2>&1; then
+      echo "${ETCD_PASS}" | etcdctl user passwd "${ETCD_USER}" --interactive=false 2>/dev/null || true
+    else
+      etcdctl user add "${ETCD_USER}" --new-user-password="${ETCD_PASS}"
+    fi
+
+    # binding role to user (idempotent)
+    etcdctl user grant-role "${ETCD_USER}" "${ETCD_USER}" 2>/dev/null || true
+  args: { executable: /bin/bash }
+  no_log: true
+
+#--------------------------------------------------------------#
+# Config Patroni                                       [pg_conf]
+#--------------------------------------------------------------#
+- name: config patroni
+  tags: pg_conf
+  block:
+
+    # use a hypothesis 40 GiB as estimation if df command failed
+    - name: get pgsql fs size
+      shell: |
+        if [ -d "{{ pg_fs_main|default('/data/postgres') }}" ]; then
+          df {{ pg_fs_main|default('/data/postgres') }} --output=size | tail -1 | tr -d ' '
+        elif [ -d "{{ node_data|default('/data') }}" ]; then
+          df {{ node_data|default('/data') }} --output=size | tail -1 | tr -d ' '
+        else
+          echo "41943040"
+        fi
+      register: pg_fs_size_res
+      args: { executable: /bin/bash }
+      ignore_errors: true
+
+    # print cpu, mem, disk info
+    - name: print postgres node spec
+      connection: local
+      debug:
+        msg: "Node={{ node_cpu }}c{{ node_mem_gb }}g {{ node_tune }}, Memory={{ (node_mem_mb|int / 400 | round(0, 'ceil'))|int * 100 }}MB of {{ node_mem_mb }}MB , Disk={{ [ (pg_fs_size_res.stdout|trim|int / 1048576)|round(0, 'ceil')|int , 1 ] | max }}GB {{ pg_storage_type|default('SSD') }} @ {{ pg_fs_main }}, PG Conf={{ pg_conf }}"
+
+    - name: config patroni
+      template: src={{ item.src }} dest={{ item.dest }} owner={{ item.owner }} group={{ item.group }} mode={{ item.mode }}
+      vars:
+        node_fs_bytes: "{{ pg_fs_size_res.stdout|trim|int * 1024 }}"
+      with_items:
+        - { src: "{{ pg_conf }}" ,dest: "/pg/conf/{{ pg_instance }}.yml"     ,owner: "{{ pg_dbsu }}" ,group: "postgres", mode: "0640" }
+        - { src: "patroni.svc"   ,dest: "{{ systemd_dir }}/patroni.service"  ,owner: root, group: root, mode: "0644" }
+        - { src: "postgres.svc"  ,dest: "{{ systemd_dir }}/postgres.service" ,owner: root, group: root, mode: "0644" }
+
+    - name: config pgbackrest for patroni
+      when: pgbackrest_enabled|bool
+      template: src=pgbackrest.conf dest=/etc/pgbackrest/pgbackrest.conf owner={{ pg_dbsu }} group=postgres mode=0600
+
+    # /etc/patroni/patroni.yml -> /pg/conf/{{ pg_instance }}.yml
+    - name: link patroni config
+      file:
+        src: "/pg/conf/{{ pg_instance }}.yml"
+        dest: "/etc/patroni/patroni.yml"
+        owner: "{{ pg_dbsu }}"
+        group: postgres
+        state: link
+
+#--------------------------------------------------------------#
+# Generate pgSodium Key                                 [pg_key]
+#--------------------------------------------------------------#
+- name: generate pgsodium key
+  tags: pg_key
+  block:
+    - name: create pgsodium.key
+      copy: dest=/pg/conf/pgsodium.key owner="{{ pg_dbsu }}" group=postgres mode=0600 content={{ pgsodium_key | default(pg_cluster|hash('sha256')) }}
+    - name: create pgsodium.getkey_script
+      template: src={{ pgsodium_getkey_script|default('pgsodium_getkey') }} dest=/pg/bin/pgsodium_getkey owner="root" group=postgres mode=0750
+
+...

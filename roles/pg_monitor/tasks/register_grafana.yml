@@ -1,0 +1,77 @@
+---
+#--------------------------------------------------------------#
+# Register Postgres Datasource to Grafana  [add_ds][pg_register]
+#--------------------------------------------------------------#
+# render datasource on all infra nodes: /infra/datasources/{{ ds_name }}.json
+- name: render grafana datasource for {{ database.name | default(database) }}
+  tags: [ pg_register, register, add_ds ]
+  delegate_to: '{{ infra_host }}'
+  loop: '{{ groups["infra"] | default([]) }}'
+  loop_control:
+    loop_var: infra_host
+  ignore_errors: true
+  when:
+    - database.state is not defined or database.state != 'absent'
+    - database.register_datasource is not defined or database.register_datasource|bool
+  copy:
+    dest: /infra/datasources/{{ ds_name }}.json
+    content: |
+      {
+        "type": "postgres",
+        "access": "proxy",
+        "name": "{{ ds_name }}",
+        "url": "{{ db_host }}:{{ db_port }}",
+        "user": "{{ db_username }}",
+        "database": "{{ dbname }}",
+        "typeLogoUrl": "",
+        "basicAuth": false,
+        "basicAuthUser": "",
+        "basicAuthPassword": "",
+        "withCredentials": false,
+        "isDefault": false,
+        "jsonData": {
+          "database": "{{ dbname }}",
+          "connMaxLifetime": 3600,
+          "maxIdleConns": 1,
+          "maxOpenConns": 8,
+          "postgresVersion": {{ version }},
+          "sslmode": "require",
+          "tlsAuth": false,
+          "tlsAuthWithCACert": false
+        },
+        "secureJsonData":{
+          "password": "{{ db_password }}"
+        }
+      }
+    mode: 0600
+  vars:
+    ds_name: "{{ pg_cluster }}-{{ pg_seq }}.{{ database.name }}"
+    db_host: "{{ inventory_hostname }}"
+    db_port: "{{ pg_port|default(5432) }}"
+    db_username: "{{ pg_monitor_username|default('dbuser_monitor') }}"
+    db_password: "{{ pg_monitor_password|default('DBUser.Monitor') }}"
+    version: "{% if pg_version is defined %}{% if pg_version|int >= 15 %}15{% else %}{{ pg_version }}{% endif %}{% else %}10{% endif %}00"
+    dbname: "{{ database.name }}"
+
+# upsert datasource using grafana datasource API on all infra nodes
+- name: load grafana datasource {{ database.name | default(database) }}
+  tags: [ pg_register, register, add_ds ]
+  delegate_to: '{{ infra_host }}'
+  loop: '{{ groups["infra"] | default([]) }}'
+  loop_control:
+    loop_var: infra_host
+  ignore_errors: true
+  when:
+    - database.state is not defined or database.state != 'absent'
+    - database.register_datasource is not defined or database.register_datasource|bool
+  shell: |
+    curl -X DELETE "http://127.0.0.1:{{ gf_port }}/ui/api/datasources/name/{{ ds_name }}" -u "{{ gf_user }}:{{ gf_pass }}" -H 'Content-Type: application/json'
+    curl -X POST   "http://127.0.0.1:{{ gf_port }}/ui/api/datasources/" -u "{{ gf_user }}:{{ gf_pass }}" -H 'Content-Type: application/json' -d @/infra/datasources/{{ ds_name }}.json
+  args: { executable: /bin/bash }
+  vars:
+    ds_name: "{{ pg_cluster }}-{{ pg_seq }}.{{ database.name }}"
+    gf_port: "{{ grafana_port|default(3000) }}"
+    gf_user: "{{ grafana_admin_username|default('admin') }}"
+    gf_pass: "{{ grafana_admin_password|default('pigsty') }}"
+
+...

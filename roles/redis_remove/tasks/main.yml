@@ -1,0 +1,138 @@
+---
+#--------------------------------------------------------------#
+# CLI ARGS: redis_port:
+#--------------------------------------------------------------#
+# if `redis_port` is defined (usually specified by cli args)
+#   (e.g. -e redis_port=6379)
+# it means, we are going to manipulate a single redis instance
+# rather than entire redis node, so we skip redis node tasks,
+# and only init instance with that port
+
+#--------------------------------------------------------------#
+# HONOR REDIS_SAFEGUARD                        [redis_safeguard]
+#--------------------------------------------------------------#
+- name: ABORT due to redis_safeguard enabled
+  connection: local
+  when: redis_safeguard|bool
+  tags: [ always , redis_safeguard ]
+  any_errors_fatal: true
+  ignore_errors: false
+  fail: msg="Abort due to redis_safeguard for {{ redis_cluster }}-{{ redis_node }} @ {{ inventory_hostname }} is enabled, override with -e redis_safeguard=false"
+
+
+#--------------------------------------------------------------#
+# Deregister Redis from victoria  [rm_metrics][redis_deregister]
+#--------------------------------------------------------------#
+# Remove register from victoria & stop redis-exporter
+- name: remove redis register from victoria
+  when: not redis_safeguard|bool
+  tags: [ redis_deregister, deregister, rm_metrics ]
+  block:
+
+    # remove whole redis instances register on that node
+    - name: deregister redis node from victoria
+      when: redis_port is not defined
+      delegate_to: '{{ item }}'
+      loop: '{{ groups["infra"]|default([]) }}'
+      file: path="/infra/targets/redis/{{ redis_cluster }}-{{ redis_node }}.yml" state=absent
+
+    # IN CASE OF REMOVING SINGLE INSTANCE (with redis_port defined), JUST OVERWRITE THE FILE EXCLUDING THAT INSTANCE
+    - name: deregister redis instance from victoria
+      when: redis_port is defined
+      delegate_to: '{{ item }}'
+      loop: '{{ groups["infra"]|default([]) }}'
+      copy:
+        dest: "/infra/targets/redis/{{ redis_cluster }}-{{ redis_node }}.yml"
+        owner: victoria
+        group: infra
+        mode: '0640'
+        content: |
+          # {{ redis_cluster }}-{{ redis_node }} @ {{ inventory_hostname }}
+          
+          {% for port in redis_instances %}
+          {% if port != redis_port|int %}
+          - labels: { cls: {{ redis_cluster }}, ins: {{ redis_cluster }}-{{ redis_node }}-{{ port }}, instance: {{ inventory_hostname }}:{{ port }} }
+            targets: [ redis://{{ inventory_hostname }}:{{ port }} ]
+          {% endif %}
+          {% endfor %}
+
+
+#--------------------------------------------------------------#
+# Deregister Redis from vector       [rm_logs][redis_deregister]
+#--------------------------------------------------------------#
+# ONLY DO THIS WHEN redis_port IS NOT DEFINED (removing entire node)
+- name: remove redis logs from vector
+  tags: [ redis_deregister, deregister, rm_logs ]
+  when: redis_port is not defined and not redis_safeguard|bool and vector_enabled|default(true)|bool
+  ignore_errors: true
+  block:
+    - name: remove redis vector logging config
+      file: path=/etc/vector/redis.yaml state=absent
+    - name: reload vector to discard redis log
+      systemd: name=vector state=reloaded enabled=yes daemon_reload=yes
+
+
+#--------------------------------------------------------------#
+# Redis Exporter                                [redis_exporter]
+#--------------------------------------------------------------#
+- name: stop and disable redis exporter service
+  when: not redis_safeguard|bool and redis_port is not defined
+  ignore_errors: true
+  tags: redis_exporter
+  systemd: name="redis_exporter.service" state=stopped enabled=no
+
+
+#--------------------------------------------------------------#
+# Stop redis instances                                   [redis]
+#--------------------------------------------------------------#
+- name: stop redis systemd service
+  when: not redis_safeguard|bool
+  ignore_errors: true
+  tags: redis
+  block:
+
+    # STOP SINGLE REDIS INSTANCE IF redis_port IS DEFINED
+    - name: stop redis instance systemd service
+      when: redis_port is defined
+      systemd: name="{{ redis_cluster }}-{{ redis_node }}-{{ redis_port }}.service" state=stopped enabled=no
+
+    # STOP ALL REDIS INSTANCES ON THE NODE IF redis_port IS NOT DEFINED
+    - name: stop redis node systemd services
+      when: not redis_port is defined
+      systemd: name="{{ redis_cluster }}-{{ redis_node }}-{{ item.key }}.service" state=stopped enabled=no
+      with_dict: "{{ redis_instances }}"
+
+
+#--------------------------------------------------------------#
+# Remove data dir if redis_rm_data                  [redis_data]
+#--------------------------------------------------------------#
+- name: remove redis data
+  when: not redis_safeguard|bool and redis_rm_data|bool
+  ignore_errors: true
+  tags: redis_data
+  block:
+
+    # REMOVE SINGLE REDIS INSTANCE DATA DIR
+    - name: remove redis instance data dir
+      when: redis_port is defined
+      file: path={{ '/data/redis' if redis_fs_main in ['/data', '/data/'] else redis_fs_main }}/{{ redis_cluster }}-{{ redis_node }}-{{ redis_port }} state=absent
+
+    # REMOVE ALL REDIS DATA DIR ON THE NODE
+    - name: remove redis data dir
+      when: not redis_port is defined
+      file: path={{ '/data/redis' if redis_fs_main in ['/data', '/data/'] else redis_fs_main }} state=absent owner=root
+
+
+#--------------------------------------------------------------#
+# Uninstall redis packages                           [redis_pkg]
+#--------------------------------------------------------------#
+- name: uninstall redis packages
+  when: not redis_safeguard|bool and redis_rm_pkg|bool and not redis_port is defined
+  ignore_errors: true
+  tags: redis_pkg
+  package: name={{ item }} state=absent
+  loop:
+    - redis
+    - "{% if os_package|default('rpm') == 'deb' %}redis-exporter{% else %}redis_exporter{% endif %}"
+
+...

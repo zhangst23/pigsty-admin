@@ -1,0 +1,71 @@
+#!/bin/bash
+set -uo pipefail
+#==============================================================#
+# File      :   pg-pass-add
+# Desc      :   add pgpass entry to current user
+# Ctime     :   2020-12-16
+# Mtime     :   2020-12-17
+# Path      :   /pg/bin/pg-pass-add
+# Deps      :   sed
+# License   :   Apache-2.0 @ https://pigsty.io/docs/about/license/
+# Copyright :   2018-2026  Ruohang Feng / Vonng (rh@vonng.com)
+#==============================================================#
+PROG_NAME="$(basename $0)"
+PROG_DIR="$(cd $(dirname $0) && pwd)"
+
+
+#--------------------------------------------------------------#
+#                             Usage                            #
+#--------------------------------------------------------------#
+function usage() {
+	cat <<-'EOF'
+		NAME
+			pg-pass-add   -- add pgpass entry
+
+		SYNOPSIS
+			pg-pass-add <username> <password> [pgpass_path=~/.pgpass]
+
+		DESCRIPTION
+			pg-pass-add will add username:password pair to .pgpass file
+
+		EXAMPLES
+			pg-pass-add  dbuser_test  Test.User.Password
+
+
+	EOF
+	exit 1
+}
+
+
+#--------------------------------------------------------------#
+# Name: pgpass_add
+# Arg1: username
+# Arg2: password
+# Arg3: pgpass file, optional
+#--------------------------------------------------------------#
+function pgpass_add() {
+	local username=${1}
+	local password=${2-'*'}
+	local pgpass_path=${3-"${HOME}/.pgpass"}
+	local pgpass_temp="${pgpass_path}.tmp"
+
+	# add new entry to pgpass
+	touch ${pgpass_path} "${pgpass_temp}"
+	sed "/:${username}:/d" "${pgpass_path}" | sed '/^[[:space:]]*$/d' | sort | uniq > ${pgpass_temp}
+	echo '*:*:*:'"${username}:${password}" >> ${pgpass_temp}
+	chmod 0600 "${pgpass_path}" "${pgpass_temp}"
+	mv -f "${pgpass_temp}" "${pgpass_path}"
+}
+
+
+#--------------------------------------------------------------#
+#                             Main                             #
+#--------------------------------------------------------------#
+if (( $# < 1 )); then
+	usage
+fi
+case "$1" in
+	-h | --help) usage ;;
+esac
+
+pgpass_add "$@"

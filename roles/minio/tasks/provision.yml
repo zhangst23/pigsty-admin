@@ -1,0 +1,98 @@
+---
+#--------------------------------------------------------------#
+# Check MinIO Health Status                        [minio_check]
+#--------------------------------------------------------------#
+- name: check minio health status
+  tags: minio_check
+  uri:
+    url: "{% if minio_https|bool %}https{% else %}http{% endif %}://{{ minio_nodename }}:{{ minio_port }}/minio/health/live"
+    method: GET
+    status_code: 200
+    validate_certs: false
+  register: result
+  until: result.status == 200
+  retries: 5
+  delay: 5
+
+
+#--------------------------------------------------------------#
+# Create MinIO Alias                               [minio_alias]
+#--------------------------------------------------------------#
+# mcli alias set sss https://sss.pigsty:9000 minioadmin S3User.MinIO
+- name: write minio alias to infra nodes
+  tags: minio_alias
+  become: false
+  delegate_to: '{{ item }}'
+  shell: mcli alias set {{ minio_alias }} {% if minio_endpoint is defined and minio_endpoint != '' %}{{ minio_endpoint }}{% else %}{% if minio_https|bool %}https{% else %}http{% endif %}://{{ minio_domain }}:{{ minio_port }}{% endif %} {{ minio_access_key }} {{ minio_secret_key }}
+  args: { executable: /bin/bash }
+  loop: '{{ groups["infra"] | default([]) }}'
+  register: result
+  retries: 5
+  until: result.rc == 0
+  delay: 8
+  no_log: true
+
+# if minio_cluster_members is overlapping with the infra group, we should not write alias to infra nodes again
+- name: write minio alias to minio cluster nodes
+  tags: minio_alias
+  become: false
+  when: item not in groups["infra"]|default([])
+  delegate_to: '{{ item }}'
+  shell: mcli alias set {{ minio_alias }} {% if minio_endpoint is defined and minio_endpoint != '' %}{{ minio_endpoint }}{% else %}{% if minio_https|bool %}https{% else %}http{% endif %}://{{ minio_domain }}:{{ minio_port }}{% endif %} {{ minio_access_key }} {{ minio_secret_key }}
+  args: { executable: /bin/bash }
+  loop: '{{ minio_cluster_members }}'
+  register: result
+  retries: 5
+  until: result.rc == 0
+  delay: 8
+  no_log: true
+
+
+#--------------------------------------------------------------#
+# Create MinIO Bucket                             [minio_bucket]
+#--------------------------------------------------------------#
+# run mcli mb command on the first minio cluster member
+- name: create minio buckets
+  tags: minio_bucket
+  when: minio_buckets|length > 0
+  become: false
+  delegate_to: '{{ minio_cluster_members[0] }}'
+  block:
+
+    # render policy.json template for each bucket
+    - name: render minio bucket policies
+      template: src=policy.json dest=/tmp/{{ item.name }}.json
+      loop: '{{ minio_buckets }}'
+
+    - name: create minio buckets
+      shell: |
+        mcli mb --ignore-existing {% if item.lock is defined and item.lock|bool %}--with-lock{% endif %} {% if item.versioning is defined and item.versioning|bool %}--with-versioning{% endif %} {{ minio_alias }}/{{ item.name }}
+      args: { executable: /bin/bash }
+      loop: '{{ minio_buckets }}'
+
+    - name: create minio bucket policies
+      shell: |
+        mcli admin policy create {{ minio_alias }} {{ item.name }} /tmp/{{ item.name }}.json
+      args: { executable: /bin/bash }
+      loop: '{{ minio_buckets }}'
+
+
+#--------------------------------------------------------------#
+# Create MinIO Users                                [minio_user]
+#--------------------------------------------------------------#
+- name: create minio users
+  tags: minio_user
+  when: minio_users|length > 0
+  become: false
+  delegate_to: '{{ minio_cluster_members[0] }}'
+  shell: |
+    set +o history
+    mcli admin user add {{ minio_alias }} {{ item.access_key }} {{ item.secret_key }};
+    {% if item.policy is defined and item.policy != '' %}
+    mcli admin policy attach {{ minio_alias }} {{ item.policy }} --user={{ item.access_key }}
+    {% endif %}
+    set -o history
+  args: { executable: /bin/bash }
+  loop: '{{ minio_users }}'
+  no_log: true
+...

@@ -1,0 +1,29 @@
+#!/bin/bash
+set -euo pipefail
+#==============================================================#
+# File      :   pglog-summary
+# Desc      :   Generate summary for remote pg log with pgbadger
+# Ctime     :   2021-09-24
+# Mtime     :   2025-01-18
+# Path      :   bin/pglog-summary
+# Deps      :   ssh, pgbadger
+# License   :   Apache-2.0 @ https://pigsty.io/docs/about/license/
+# Copyright :   2018-2026  Ruohang Feng / Vonng (rh@vonng.com)
+#==============================================================#
+APP_NAME="$(basename $0)"
+APP_DIR="$(cd $(dirname $0) && pwd)"
+
+
+#--------------------------------------------------------------#
+# Usage
+#--------------------------------------------------------------#
+# pglog-summary [IP|HOSTNAME] [WEEKDAY]
+# WEEKDAY: Mon, Tue, Wed, Thu, Fri, Sat, Sun (default: today)
+# then view from http://i.pigsty/report
+NODE=${1-'127.0.0.1'}
+TODAY=$(date '+%Y-%m-%d')
+WEEKDAY=${2-$(date '+%a')}
+LOGPATH=/pg/log/postgres
+OUTPUT_FILE="${NODE}-${TODAY}-${WEEKDAY}.html"
+ssh -t "${NODE}" "sudo cat ${LOGPATH}/postgresql-${WEEKDAY}.csv" | pgbadger - -f csv -o /tmp/${OUTPUT_FILE} --wide-char --average 1 --sample 3
+sudo mv -f /tmp/${OUTPUT_FILE} /www/report/${OUTPUT_FILE}

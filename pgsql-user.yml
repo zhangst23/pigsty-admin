@@ -1,0 +1,171 @@
+#!/usr/bin/env ansible-playbook
+---
+#==============================================================#
+# File      :   pgsql-user.yml
+# Desc      :   create or modify user/role on pgsql cluster
+# Ctime     :   2021-02-27
+# Mtime     :   2026-02-12
+# Path      :   pgsql-user.yml
+# Deps      :   templates/pg-user.sql
+# Docs      :   https://pigsty.io/docs/pgsql/playbook
+# License   :   Apache-2.0 @ https://pigsty.io/docs/about/license/
+# Copyright :   2018-2026  Ruohang Feng / Vonng (rh@vonng.com)
+#==============================================================#
+
+
+#--------------------------------------------------------------#
+# Usage
+#--------------------------------------------------------------#
+#
+#  1.  Define new user/role in inventory (cmdb or config)
+#      `all.children.<pg_cluster>.vars.pg_users[i]`
+#
+#  2.  Execute this playbook on target cluster with arg `username`
+#      `pgsql-user.yml -l <pg_cluster> -e username=<name>
+#
+#  This playbook will:
+#    1. create user sql definition on `/pg/tmp/pg-user-{{ user.name }}.sql`
+#    2. execute database creation/update sql on cluster leader instance
+#    3. update /etc/pgbouncer/userlist.txt & useropts.txt
+#    4. and reload pgbouncer to take effect
+#
+#--------------------------------------------------------------#
+# Utils
+#--------------------------------------------------------------#
+#  Create pgsql user 'username' on pgsql cluster 'cls'
+#    bin/pgsql-user <cls> <username>
+#    bin/pgsql-user pg-meta dbuser_meta
+#
+#--------------------------------------------------------------#
+# Example
+#--------------------------------------------------------------#
+# pg-meta:
+#   vars:
+#     pg_users:                           # define business users/roles on this cluster, array of user definition
+#       - name: dbuser_meta               # REQUIRED, `name` is the only mandatory field of a user definition
+#         state: create                   # optional, create|absent, create by default. use 'absent' to drop user
+#         password: DBUser.Meta           # optional, password, can be a scram-sha-256 hash string or plain text
+#         login: true                     # optional, can log in, true by default  (new biz ROLE should be false)
+#         superuser: false                # optional, is superuser? false by default
+#         createdb: false                 # optional, can create database? false by default
+#         createrole: false               # optional, can create role? false by default
+#         inherit: true                   # optional, can this role use inherited privileges? true by default
+#         replication: false              # optional, can this role do replication? false by default
+#         bypassrls: false                # optional, can this role bypass row level security? false by default
+#         pgbouncer: true                 # optional, add this user to pgbouncer user-list? false by default (production user should be true explicitly)
+#         connlimit: -1                   # optional, user connection limit, default -1 disable limit
+#         expire_in: 3650                 # optional, now + n days when this role is expired (OVERWRITE expire_at)
+#         expire_at: '2030-12-31'         # optional, YYYY-MM-DD 'timestamp' when this role is expired  (OVERWRITTEN by expire_in)
+#         comment: pigsty admin user      # optional, comment string for this user/role
+#         roles: [dbrole_admin]           # optional, belonged roles. default roles are: dbrole_{admin,readonly,readwrite,offline}
+#         parameters: {}                  # optional, role level parameters with `ALTER ROLE SET`
+#         pool_mode: transaction          # optional, pgbouncer pool mode at user level, transaction by default
+#         pool_connlimit: -1              # optional, max database connections at user level, default -1 disable limit
+#         search_path: public             # key value config parameters according to postgresql documentation (e.g: use pigsty as default search_path)
+#
+#       # User with enhanced roles syntax (PG16+ features: set/inherit options)
+#       - name: dbuser_test
+#         roles:
+#           - dbrole_readwrite                            # simple string: GRANT role
+#           - { name: dbrole_admin, admin: true }         # grant with ADMIN OPTION (PG16: WITH ADMIN TRUE)
+#           - { name: pg_monitor, set: false , inherit: false } # remove set/inherit option
+#           - { name: old_role, state: absent }           # REVOKE instead of GRANT
+#
+#       # One-liner examples
+#       - {name: dbuser_view     ,password: DBUser.Viewer   ,pgbouncer: true ,roles: [dbrole_readonly], comment: read-only viewer for meta database}
+#       - {name: dbuser_grafana  ,password: DBUser.Grafana  ,pgbouncer: true ,roles: [dbrole_admin]    ,comment: admin user for grafana database   }
+#       - {name: dbuser_bytebase ,password: DBUser.Bytebase ,pgbouncer: true ,roles: [dbrole_admin]    ,comment: admin user for bytebase database  }
+#--------------------------------------------------------------#
+
+- name: PGSQL USER
+  become: true
+  hosts: all
+  gather_facts: no
+  tasks:
+
+    #----------------------------------------------------------#
+    # Validate username and user definition          [preflight]
+    #----------------------------------------------------------#
+    - name: preflight
+      tags: [ preflight, always ]
+      connection: local
+      block:
+
+        - name: validate username parameter
+          assert:
+            that:
+              - username is defined
+              - username != ''
+              - username != 'postgres'
+            fail_msg: variable 'username' should be specified (-e username=<name>)
+
+        - name: fetch user definition
+          set_fact: user_def={{ pg_users | json_query(user_def_query) }}
+          vars: { user_def_query: "[?name=='{{ username }}'] | [0]" }
+
+        - name: validate user definition
+          assert:
+            that:
+              - user_def is defined
+              - user_def != None
+              - user_def != ''
+              - user_def != {}
+            fail_msg: define user {{ username }} in pg_users first
+
+        - debug: { msg: "process user={{ user_def.name }} state={{ user_def.state|default('create') }}" }
+
+
+    #----------------------------------------------------------#
+    # Create Postgres User                            [postgres]
+    #----------------------------------------------------------#
+    # create user according to user definition
+    - include_tasks: roles/pgsql/tasks/user.yml
+      tags: postgres
+      when: pg_role == 'primary'
+      vars: { user: "{{ user_def }}" }
+
+    # write biz user plain password to .pgpass file for citus cluster
+    - name: write plain biz user password to pgpass for citus cluster
+      tags: postgres
+      no_log: true
+      become_user: "{{ pg_dbsu|default('postgres') }}"
+      when: pg_mode|default('pgsql') == 'citus' and user_def.password is defined and user_def.password != '' and not user_def.password.startswith('md5') and not user_def.password.startswith('scram')
+      shell: /bin/bash /pg/bin/pg-pass-add "{{ user_def.name }}" "{{ user_def.password }}"
+      args: { executable: /bin/bash }
+
+    #----------------------------------------------------------#
+    # Refresh Pgbouncer User Configuration           [pgbouncer]
+    #----------------------------------------------------------#
+    - name: refresh pgbouncer users
+      tags: pgbouncer
+      when: pgbouncer_enabled|default(true)|bool and user_def.pgbouncer is defined and user_def.pgbouncer|bool
+      block:
+
+        # regenerate user level parameters for pgbouncer if specified
+        - name: refresh pgbouncer useropts.txt
+          when: user_def.pool_mode is defined or user_def.pool_connlimit is defined
+          copy:
+            dest: /etc/pgbouncer/useropts.txt
+            owner: "{{ pg_dbsu|default('postgres') }}"
+            group: postgres
+            mode: 0600
+            content: |
+              # pgbouncer user options
+              {% for user in pg_default_roles|default([]) + pg_users|default([]) %}
+              {% if (user.state is not defined or user.state != 'absent') and ('pool_mode' in user or 'pool_connlimit' in user) %}
+              {{ "%-27s" | format(user.name) }} = {% if 'pool_mode' in user %}pool_mode={{ user.pool_mode }}{% endif %} {% if 'pool_connlimit' in user %}max_user_connections={{ user.pool_connlimit }}{% endif %}
+
+              {% endif %}
+              {% endfor %}
+
+        - name: add business users to pgbouncer
+          ignore_errors: true
+          environment: { PGPORT: "{{ pg_port|default(5432) }}" }
+          become_user: "{{ pg_dbsu|default('postgres') }}"
+          shell: /bin/bash /pg/bin/pgb-user '{{ username }}' AUTO
+          args: { executable: /bin/bash }
+
+        - name: reload pgbouncer
+          systemd: name=pgbouncer state=reloaded enabled=yes daemon_reload=yes
+
+...

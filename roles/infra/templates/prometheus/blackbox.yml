@@ -1,0 +1,28 @@
+---
+#==============================================================#
+# File      :   black.yml
+# Ctime     :   2022-11-30
+# Mtime     :   2022-12-04
+# Desc      :   Blackbox Exporter Probes
+# Path      :   /etc/blackbox_exporter.yml
+# License   :   Apache-2.0 @ https://pigsty.io/docs/about/license/
+# Copyright :   2018-2026  Ruohang Feng / Vonng (rh@vonng.com)
+#==============================================================#
+
+modules:
+  icmp:
+    prober: icmp
+  icmp_ttl5:
+    prober: icmp
+    timeout: 5s
+    icmp:
+      ttl: 5
+  http_2xx:
+    prober: http
+  http_post_2xx:
+    prober: http
+    http:
+      method: POST
+  tcp_connect:
+    prober: tcp
+...

@@ -1,0 +1,27 @@
+---
+#--------------------------------------------------------------#
+# Config Alertmanager                      [alertmanager_config]
+#--------------------------------------------------------------#
+- name: config alertmanager
+  tags: alertmanager_config
+  template: src={{ item.src }} dest={{ item.dest }} owner={{ item.owner }} group={{ item.group|default(item.owner) }} mode={{ item.mode }}
+  with_items:
+    - { src: "prometheus/alertmanager.svc" ,dest: "{{ systemd_dir }}/alertmanager.service" ,owner: root       ,group: root  ,mode: "0644" }
+    - { src: "prometheus/alertmanager.yml" ,dest: "/etc/alertmanager.yml"                  ,owner: prometheus ,group: infra ,mode: "0644" }
+    - { src: "prometheus/alertmanager.env" ,dest: "/etc/default/alertmanager"              ,owner: prometheus ,group: infra ,mode: "0640" }
+
+
+#--------------------------------------------------------------#
+# Launch AlertManager                      [alertmanager_launch]
+#--------------------------------------------------------------#
+# launch alertmanager on port 9059
+- name: launch alertmanager
+  tags: alertmanager_launch
+  when: alertmanager_enabled|bool
+  ignore_errors: true
+  block:
+    - name: launch alertmanager systemd service
+      systemd: name=alertmanager state=restarted enabled=yes daemon_reload=yes no_block=yes
+    - name: wait for alertmanager service online
+      wait_for: host=127.0.0.1 port={{ alertmanager_port|default(9059) }} state=started timeout=30
+...

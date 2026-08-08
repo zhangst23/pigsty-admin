@@ -1,0 +1,206 @@
+---
+#--------------------------------------------------------------#
+# Install PostgreSQL Packages & Extensions              [pg_pkg]
+#--------------------------------------------------------------#
+# to install the latest postgres packages, use the `pg_ext` tag
+
+- name: install postgres packages
+  become: true
+  tags: pg_pkg
+  block:
+
+    # this task will try to find each item in pg_extension_map first
+    # if found, the value will be used instead of the key
+    # if not found, the key will be not modified, and used as raw extension name
+    - name: lookup pg packages & extensions names
+      tags: [pg_extension, pg_ext]
+      become: false
+      connection: local
+      set_fact:
+        pg_packages_list: "{{ pg_packages_list_temp | default('', true) }}"
+        pg_extension_list: "{{ pg_extension_list_temp | default('', true) }}"
+      vars:
+        pg_packages_list_temp: |-
+          {% set pkg_map = package_map | default({}) %}
+          {% for pkg_list in pg_packages %}{% for pkg in pkg_list | trim | regex_replace('(,|\\s)+', ',') | regex_findall('([^,\\s]+)') | default([]) %}{% if pkg != '' %}{% if pkg in pkg_map %}{% set pkg = pkg_map[pkg] %}{% endif %}{% if not loop.first %},{% endif %}{{ pkg|replace('${pg_version}', pg_version|string)|replace('$v', pg_version|string) }}{% endif %}{% endfor %}
+
+          {% endfor %}
+        pg_extension_list_temp: |-
+          {% set pkg_map = package_map | default({}) %}
+          {% for ext_list in pg_extensions %}{% for ext in ext_list | trim | regex_replace('(,|\\s)+', ',') | regex_findall('([^,\\s]+)') | default([]) %}{% if ext != '' %}{% if ext in pkg_map %}{% set ext = pkg_map[ext] %}{% endif %}{% if not loop.first %},{% endif %}{{ ext|replace('${pg_version}', pg_version|string)|replace('$v', pg_version|string) }}{% endif %}{% endfor %}
+
+          {% endfor %}
+
+    # postgres pre-install setup: remove conflicting packages on EL 9+
+    - name: postgres pre-install setup
+      ignore_errors: true
+      tags: pg_pre
+      shell: |
+        dnf remove -y bpftool python3-perf || /bin/true
+      when: os_package|default('rpm') == 'rpm' and os_version|default(8)|int >= 9
+      # the bpftool python3-perf require the system llvm 19 conflict from pgdg-sysupdate llvm20 on el9/el10
+
+    # install postgres basic packages
+    - name: install postgres packages
+      environment: "{{ proxy_env | default({}) }}"
+      package: name={{ item }} state=present
+      with_items: "{{ pg_packages_list | trim | regex_findall('[^\\n]+') | map('replace', '$v', pg_version|string) | list | map('replace', '${pg_version}', pg_version|string) | map('regex_replace', '(,|\\s)+', ',' ) | list }}"
+
+    # install postgres extensions
+    - name: install postgres extensions
+      tags: [pg_extension, pg_ext]
+      environment: "{{ proxy_env | default({}) }}"
+      package: name={{ item }} state=latest
+      with_items: "{{ pg_extension_list | trim | regex_findall('([^\\n]+)') | map('replace', '$v', pg_version|string) | list | map('replace', '${pg_version}', pg_version|string) | map('regex_replace', '(,|\\s)+', ',' ) | list }}"
+
+    # fix rpm trash and unused service file, shut debian default service
+    - name: postgres post-install cleanup
+      tags: pg_post
+      ignore_errors: true
+      shell: |
+        {% if os_package|default('rpm') == 'rpm' %}
+        rm -rf /usr/lib/systemd/system/postgresql-{{ pg_version }}.service # rhel
+        rm -rf '/%{_sysconfigdir}'   # introduced by patroni rpm
+        rm -rf '/%{_logdir}'         # remove these if patroni rpm fixed
+        chown -R {{ pg_dbsu }}:postgres /var/run/postgresql /var/lib/pgsql || /bin/true;
+        
+        {% elif os_package|default('rpm') == 'deb' %}
+        # kill the default debian service
+        systemctl stop --no-block postgresql   # the auto-started debian/ubuntu service
+        systemctl stop --no-block postgresql@{{ pg_version|default('18') }}-main
+        systemctl disable --no-block postgresql
+        systemctl disable --no-block postgresql@{{ pg_version|default('18') }}-main
+        rm -rf /lib/systemd/system/postgresql.service
+        rm -rf /lib/systemd/system/postgresql@.service
+        if ps -u postgres -o pid:1,command | grep -E 'postmaster|postgres:|-D' | grep 'config_file=/etc/postgresql/.*/main/postgresql.conf' ; then
+            {{ pg_bin_dir }}/pg_ctl -D /var/lib/postgresql/{{ pg_version }}/main stop --mode=immediate
+        fi
+        if ps -u postgres -o pid:1,command | grep -E 'postmaster|postgres:|-D' | grep 'config_file=/etc/postgresql/.*/main/postgresql.conf' ; then
+            sleep 2
+            ps -u postgres -o pid:1,command | grep -E 'postmaster|postgres:|-D' | grep '/etc/postgresql/*/main/postgresql.conf' | awk '{print $1}' | xargs kill -9
+        fi
+        rm -rf /lib/systemd/system/postgresql.service /lib/systemd/system/postgresql@.service
+        chown -R {{ pg_dbsu }}:postgres /var/run/postgresql /var/lib/postgresql /etc/postgresql || /bin/true;
+        {% endif %}
+        chown -R {{ pg_dbsu }}:postgres "{{ pg_dbsu_home }}"
+        systemctl daemon-reload;
+        /bin/true;
+      args: { executable: /bin/bash }
+
+#--------------------------------------------------------------#
+# Link Binary Dir                                      [pg_link]
+#--------------------------------------------------------------#
+- name: link postgres home
+  tags: pg_link
+  file: src="{{ pg_home_dir }}" dest={{ pg_bin_dir | dirname }} state=link
+  vars: { pg_home_dir: "{{ pg_home_map[pg_mode] | replace('$v', pg_version) | replace('${pg_version}', pg_version )}}" }
+
+#--------------------------------------------------------------#
+# Setup Profile Path                                   [pg_path]
+#--------------------------------------------------------------#
+# add {{ pg_bin_dir }} to PATH environment variable
+- name: setup pgsql path
+  tags: pg_path
+  copy:
+    dest: /etc/profile.d/pgsql.sh
+    mode: 0755
+    content: |
+      export PATH="{{ pg_bin_dir }}:/pg/bin:$PATH"
+      export PGHOME={{ pg_bin_dir | dirname }}
+      export PGDATA={{ pg_data }}
+      export PGPORT={{ pg_port }}
+      export PGDATABASE={{ pg_primary_db }}
+
+#--------------------------------------------------------------#
+# Create Directories                                    [pg_dir]
+#--------------------------------------------------------------#
+
+#--------------------------------------------------------------#
+# Create Directory
+#--------------------------------------------------------------#
+# assumption:
+#   {{ pg_fs_main }}   ,default: `/data/postgres` [fast ssd]
+#   {{ pg_fs_backup }} ,default: `/data/backups`  [cheap hdd]
+#--------------------------------------------------------------#
+#   /pg        -> /data/postgres/pg-test-18       (soft link)
+#   /pg/data   -> /data/postgres/pg-test-18/data
+#   /pg/backup -> /data/backups/pg-test-18/backup
+#--------------------------------------------------------------#
+- name: create pgsql directories
+  tags: pg_dir
+  become: true
+  block:
+
+    # assuming that node_data (/data) is already created in the node role
+    - name: create pgsql directories
+      file: path={{ item.path }} state=directory owner={{ item.owner|default(pg_dbsu) }} group={{ item.group|default('postgres') }} mode={{ item.mode }}
+      with_items:
+        - { path: "{{ pg_fs_main }}"            ,mode: "0700" }   # /data/postgres                  the main data dir
+        - { path: "{{ pg_fs_backup }}"          ,mode: "0700" }   # /data/backups                   the backup dir
+        - { path: "{{ pg_cluster_dir }}"        ,mode: "0700" }   # /data/postgres/pg-meta-18       the cluster dir
+        - { path: "{{ pg_cluster_dir }}/bin"    ,mode: "0700" }   # /data/postgres/pg-meta-18/bin   postgres scripts
+        - { path: "{{ pg_cluster_dir }}/log"    ,mode: "0750" }   # /data/postgres/pg-meta-18/log   log dir for pg components
+        - { path: "{{ pg_cluster_dir }}/tmp"    ,mode: "0700" }   # /data/postgres/pg-meta-18/tmp   role/db init sql and log
+        - { path: "{{ pg_cluster_dir }}/cert"   ,mode: "0700" }   # /data/postgres/pg-meta-18/cert  ssl certificates
+        - { path: "{{ pg_cluster_dir }}/conf"   ,mode: "0700" }   # /data/postgres/pg-meta-18/conf  patroni and config
+        - { path: "{{ pg_cluster_dir }}/data"   ,mode: "0700" }   # /data/postgres/pg-meta-18/data  main data dir
+        - { path: "{{ pg_cluster_dir }}/spool"  ,mode: "0700" }   # /data/postgres/pg-meta-18/spool pgbackrest temp
+        - { path: "{{ pg_backup_dir }}/backup"  ,mode: "0700" }   # /data/backups/pg-meta-18/backup local backup dir
+        - { path: "/var/run/postgresql"         ,mode: "0755" }   # pid directory for postgresql and pgbouncer
+        - { path: "/etc/patroni"                ,mode: "0700" }   # config dir for patroni
+        - { path: "/etc/pgbackrest"             ,mode: "0700" }   # config dir for pgbackrest
+        - { path: "/etc/pgbouncer"              ,mode: "0700" }   # config dir for pgbouncer
+        - { path: "/etc/pg_exporter"            ,mode: "0700" }   # config dir for pg_exporter
+
+    # create the `/pg` soft link
+    - name: link pgsql directories
+      file: src={{ item.src }} dest={{ item.dest }} state=link
+      with_items:
+        - { src: "{{ pg_backup_dir }}/backup" ,dest: "{{ pg_cluster_dir }}/backup" }
+        - { src: "{{ pg_cluster_dir }}"       ,dest: "/pg" }
+
+    # do not create log dir inside data dir (create when data dir is not prefix of log dir)
+    - name: create log directories
+      file: path={{ item }} state=directory owner={{ pg_dbsu }} group=postgres mode=0750
+      with_items:
+        - "{% if not pg_log_dir.startswith(pg_data) %}{{ pg_log_dir }}{% else %}{{ patroni_log_dir }}{% endif %}"
+        - "{{ patroni_log_dir }}"
+        - "{{ pgbouncer_log_dir }}"
+        - "{{ pgbackrest_log_dir }}"
+
+    # make sure the /var/run/postgresql is created
+    - name: create tmpfiles.d for /var/run/postgresql
+      copy:
+        dest: /etc/tmpfiles.d/postgresql.conf
+        content: "d /var/run/postgresql 0755 {{ pg_dbsu }} postgres -"
+        owner: root
+        group: root
+        mode: '0644'
+
+#--------------------------------------------------------------#
+# PostgreSQL Bin Scripts                                [pg_bin]
+#--------------------------------------------------------------#
+# sync files/postgres -> /pg/bin/
+- name: copy /pg/bin scripts
+  tags: pg_bin
+  copy: src=postgres/ dest=/pg/bin/ owner=root group=postgres mode=0755
+
+#--------------------------------------------------------------#
+# PostgreSQL / PSQL Alias                             [pg_alias]
+#--------------------------------------------------------------#
+- name: copy pgsql/psql alias
+  tags: pg_alias
+  template: src={{ item.src }} dest={{ item.dest }} owner={{ item.owner }} group={{ item.group }} mode={{ item.mode }}
+  with_items:
+    - { src: "pg-alias" ,dest: "/etc/profile.d/pg-alias.sh" ,owner: "root"          ,group: "root"     ,mode: "0644" }
+    - { src: "psqlrc"   ,dest: "{{ pg_dbsu_home }}/.psqlrc" ,owner: "{{ pg_dbsu }}" ,group: "postgres" ,mode: "0600" }
+
+#--------------------------------------------------------------#
+# Create Dummy File                                   [pg_dummy]
+#--------------------------------------------------------------#
+# reserve dummy file for disk-full emergency
+- name: create pgsql dummy file
+  tags: pg_dummy
+  command: fallocate -l {{ pg_dummy_filesize|default('64MiB') }} /pg/dummy
+
+...

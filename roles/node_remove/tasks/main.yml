@@ -1,0 +1,137 @@
+---
+#--------------------------------------------------------------#
+# remove prometheus register                   [node_deregister]
+#--------------------------------------------------------------#
+- name: remove node target from victoria
+  tags: [ node_deregister, deregister, rm_metrics ]
+  become: true
+  delegate_to: '{{ item }}'
+  loop: '{{ groups["infra"]|default([]) }}'
+  file: state=absent path=/infra/targets/node/{{ inventory_hostname }}.yml
+
+- name: remove docker target from victoria
+  tags: [ node_deregister, deregister, rm_metrics ]
+  become: true
+  delegate_to: '{{ item }}'
+  loop: '{{ groups["infra"]|default([]) }}'
+  file: state=absent path=/infra/targets/docker/{{ inventory_hostname }}.yml
+
+- name: remove node ping target from victoria
+  tags: [ node_deregister, deregister, rm_metrics ]
+  become: true
+  delegate_to: '{{ item }}'
+  loop: '{{ groups["infra"]|default([]) }}'
+  file: state=absent path=/infra/targets/ping/{{ inventory_hostname }}.yml
+
+- name: remove vip ping target from victoria
+  tags: [ node_deregister, deregister, rm_metrics ]
+  when: vip_enabled|bool and vip_address is defined and vip_address != ''
+  become: true
+  delegate_to: '{{ item }}'
+  loop: '{{ groups["infra"]|default([]) }}'
+  file: state=absent path=/infra/targets/ping/{{ vip_address }}---{{ inventory_hostname }}.yml
+
+- name: remove node vip dns record
+  tags: [ node_deregister, deregister, rm_dns ]
+  when: vip_enabled|bool
+  become: true
+  delegate_to: '{{ item }}'
+  loop: '{{ groups["infra"]|default([]) }}'
+  file: state=absent path=/etc/dnsmasq.d/pigsty/{{ node_cluster }}.vip
+
+
+#--------------------------------------------------------------#
+# remove haproxy from nginx                 [haproxy_deregister]
+#--------------------------------------------------------------#
+- import_tasks: nginx.yml
+  tags: [ haproxy_deregister, deregister, rm_proxy ]
+
+#--------------------------------------------------------------#
+# remove keepalived_exporter                               [vip]
+#--------------------------------------------------------------#
+- name: stop and disable keepalived service
+  tags: vip
+  when: vip_enabled|bool
+  systemd: name=keepalived state=stopped enabled=no daemon_reload=yes
+
+#--------------------------------------------------------------#
+# remove haproxy services                              [haproxy]
+#--------------------------------------------------------------#
+- name: stop and disable haproxy
+  tags: haproxy
+  block:
+    - name: stop and disable haproxy
+      systemd: name=haproxy state=stopped enabled=no daemon_reload=yes
+    - name: remove haproxy config dir
+      file: state=absent path=/etc/haproxy
+
+#--------------------------------------------------------------#
+# remove node exporter                           [node_exporter]
+#--------------------------------------------------------------#
+- name: stop and disable node_exporter service
+  tags: node_exporter
+  systemd: name=node_exporter state=stopped enabled=no daemon_reload=yes
+
+#--------------------------------------------------------------#
+# remove keepalived_exporter                      [vip_exporter]
+#--------------------------------------------------------------#
+- name: stop and disable keepalived_exporter service
+  tags: vip_exporter
+  when: vip_enabled|bool
+  systemd: name=keepalived_exporter state=stopped enabled=no daemon_reload=yes
+
+#--------------------------------------------------------------#
+# remove node syslog from vector               [node_deregister]
+#--------------------------------------------------------------#
+- name: remove node logs from vector
+  tags: [ node_deregister, deregister, rm_logs ]
+  block:
+    - name: remove node vector logging config
+      file: path=/etc/vector/node.yaml state=absent
+    - name: reload vector to discard node log
+      systemd: name=vector state=reloaded enabled=yes daemon_reload=yes
+
+#--------------------------------------------------------------#
+# remove vector                                         [vector]
+#--------------------------------------------------------------#
+- name: stop and disable vector service
+  tags: vector
+  block:
+    - name: stop vector service
+      systemd: name=vector state=stopped enabled=no daemon_reload=yes
+    - name: remove vector persist data
+      file: path={{ vector_data|default('/data/vector') }} state=absent
+
+#--------------------------------------------------------------#
+# restore default crontab                         [node_crontab]
+#--------------------------------------------------------------#
+- name: restore default etc crontab
+  tags: node_crontab
+  when: node_crontab_overwrite|default(true)|bool
+  copy:
+    dest: /etc/crontab
+    mode: '0644'
+    content: |
+      SHELL=/bin/bash
+      PATH=/sbin:/bin:/usr/sbin:/usr/bin
+      MAILTO=root
+
+      # For details see man 4 crontabs
+
+      # Example of job definition:
+      # .---------------- minute (0 - 59)
+      # |  .------------- hour (0 - 23)
+      # |  |  .---------- day of month (1 - 31)
+      # |  |  |  .------- month (1 - 12) OR jan,feb,mar,apr ...
+      # |  |  |  |  .---- day of week (0 - 6) (Sunday=0 or 7) OR sun,mon,tue,wed,thu,fri,sat
+      # |  |  |  |  |
+      # *  *  *  *  * user-name  command to be executed
+
+#--------------------------------------------------------------#
+# remove node etc profile                              [profile]
+#--------------------------------------------------------------#
+- name: remove node etc profile
+  tags: profile
+  file: path="/etc/profile.d/{{ item }}" state=absent
+  loop: [ node.sh, node.alias.sh ]
+...

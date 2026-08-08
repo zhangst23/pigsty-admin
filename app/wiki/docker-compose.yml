@@ -1,0 +1,15 @@
+# check .env files before running
+
+services:
+  wiki:
+    container_name: wiki
+    image: requarks/wiki
+    environment:
+      DB_TYPE: ${WIKI_DB_TYPE}
+      DB_USER: ${WIKI_DB_USER}
+      DB_PASS: ${WIKI_DB_PASS}
+      DB_HOST: ${WIKI_DB_HOST}
+      DB_PORT: ${WIKI_DB_PORT}
+      DB_NAME: ${WIKI_DB_NAME}
+    restart: unless-stopped
+    ports: [ "${WIKI_PORT}:3000" ]

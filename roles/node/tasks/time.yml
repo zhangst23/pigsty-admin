@@ -1,0 +1,79 @@
+---
+#--------------------------------------------------------------#
+# 1. Setup node timezone (if given)              [node_timezone]
+#--------------------------------------------------------------#
+- name: setup node timezone
+  tags: node_timezone
+  when: node_timezone is defined and node_timezone != ""
+  timezone: name={{ node_timezone }}
+
+
+#--------------------------------------------------------------#
+# 2. Setup time services                              [node_ntp]
+#--------------------------------------------------------------#
+- name: setup time service
+  tags: node_ntp
+  when: node_ntp_enabled|bool
+  block:
+
+    # skip this because already installed in pkgs.yml
+    - name: install chrony package
+      tags: node_ntp_install
+      environment: "{{ proxy_env | default({}) }}"
+      package: name=chrony state=present
+
+    # config chrony service
+    - name: generate etc chrony conf
+      tags: node_ntp_config
+      template: src=chrony.conf.j2 dest=/etc/chrony.conf
+
+    # launch chrony systemctl service
+    - name: launch chronyd service
+      tags: node_ntp_launch
+      systemd: name=chronyd enabled=true state=restarted daemon_reload=yes
+
+
+#--------------------------------------------------------------#
+# Setup Node Crontab                                 [node_cron]
+#--------------------------------------------------------------#
+# launch cron service unconditionally (cron on deb, crond on rpm)
+- name: launch cron service
+  tags: node_crontab
+  systemd: name="{% if os_package == 'deb' %}cron{% else %}crond{% endif %}" state=started enabled=true daemon_reload=yes
+
+- name: setup node crontab
+  tags: node_crontab
+  when: node_crontab|length > 0
+  block:
+
+    # append entries to /etc/crontab, default behavior
+    - name: append etc crontab
+      when: not node_crontab_overwrite|bool
+      lineinfile: path=/etc/crontab line="{{ item }}"
+      with_items: "{{ node_crontab }}"
+
+    # overwrite /etc/crontab if node_crontab_overwrite is true
+    - name: overwrite etc crontab
+      when: node_crontab_overwrite|bool
+      copy:
+        dest: /etc/crontab
+        content: |
+          SHELL=/bin/bash
+          PATH=/sbin:/bin:/usr/sbin:/usr/bin
+          MAILTO=root
+          
+          # For details see man 4 crontabs
+          # Example of job definition:
+          # .---------------- minute (0 - 59)
+          # |  .------------- hour (0 - 23)
+          # |  |  .---------- day of month (1 - 31)
+          # |  |  |  .------- month (1 - 12) OR jan,feb,mar,apr ...
+          # |  |  |  |  .---- day of week (0 - 6) (Sunday=0 or 7) OR sun,mon,tue,wed,thu,fri,sat
+          # |  |  |  |  |
+          # *  *  *  *  * user-name  command to be executed
+          
+          {% for item in node_crontab %}
+          {{ item }}
+          {% endfor %}
+
+...

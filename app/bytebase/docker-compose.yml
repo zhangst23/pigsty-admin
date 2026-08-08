@@ -1,0 +1,13 @@
+# check .env files before running
+
+services:
+  bytebase:
+    container_name: bytebase
+    image: bytebase/bytebase:latest
+    restart: unless-stopped
+    environment:
+      PG_URL: ${BB_PGURL}
+    ports:
+      - "${BB_PORT}:${BB_PORT}"
+    command: |
+      --external-url ${BB_DOMAIN} --port ${BB_PORT}

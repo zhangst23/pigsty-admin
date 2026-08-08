@@ -1,0 +1,50 @@
+---
+#--------------------------------------------------------------#
+# Create MinIO OS user & Group                   [minio_os_user]
+#--------------------------------------------------------------#
+# The OS group name is fixed to `minio`, and the username is customizable
+- name: create minio user group
+  tags: minio_os_user
+  block:
+    - name: create minio os group
+      group: name=minio state=present
+    - name: create minio os user
+      user: name={{ minio_user }} group=minio
+
+
+#--------------------------------------------------------------#
+# Install MinIO Package                              [minio_pkg]
+#--------------------------------------------------------------#
+# `minio` and `mcli` packages are required (from pigsty-infra repo)
+- name: install minio package
+  tags: minio_pkg
+  environment: "{{ proxy_env | default({}) }}"
+  package: name={{ item }} state=present
+  with_items: [ minio, mcli ]
+
+
+#--------------------------------------------------------------#
+# Create MinIO Directories                           [minio_dir]
+#--------------------------------------------------------------#
+# for a serious production deployment, you should make sure these
+# data directories are properly mounted to a persistent storage
+- name: create minio directories
+  tags: minio_dir
+  block:
+
+    - name: create minio data directories
+      file:
+        path: "{{ item }}"
+        state: directory
+        owner: "{{ minio_user }}"
+        group: minio
+        mode: 0750
+      with_items: "{{ minio_data_dirs.split(',') }}"
+
+    - name: create minio conf dir and log file
+      file: path={{ item.path }} state={{ item.state }} owner={{ item.owner }} group=minio mode={{ item.mode }}
+      loop:
+        - { path: "/home/{{ minio_user }}/.minio" ,state: directory ,owner: "{{ minio_user }}" ,mode: '0750' }
+        - { path: "/var/log/minio.log"            ,state: touch     ,owner: "{{ minio_user }}" ,mode: '0640' }
+
+...

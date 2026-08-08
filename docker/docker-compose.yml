@@ -1,0 +1,38 @@
+#==============================================================#
+# File      :   docker-compose.yml
+# Desc      :   Pigsty Docker Compose Configuration
+# Ctime     :   2025-01-27
+# Mtime     :   2025-01-27
+# License   :   Apache-2.0 @ https://pigsty.io/docs/about/license
+# Copyright :   2018-2025  Ruohang Feng / Vonng (rh@vonng.com)
+#==============================================================#
+#
+# Quick Start (works on both macOS and Linux):
+#   docker compose up -d
+#   docker compose exec pigsty ./deploy.yml
+#
+# Or use one-liner:
+#   make launch
+#
+# Access after deployment:
+#   SSH:   ssh root@localhost -p 2222  (password: pigsty)
+#   HTTP:  http://localhost:8080
+#   PGSQL: psql postgres://dbuser_dba:DBUser.DBA@localhost:5432/postgres
+#
+#==============================================================#
+
+services:
+  pigsty:
+    image: pgsty/pigsty:${PIGSTY_VERSION:-v4.4.0}
+    container_name: pigsty
+    hostname: pigsty
+    privileged: true
+    volumes:
+      - ./data:/data
+    ports:
+      - "${PIGSTY_SSH_PORT:-2222}:22"
+      - "${PIGSTY_HTTP_PORT:-8080}:80"
+      - "${PIGSTY_HTTPS_PORT:-8443}:443"
+      - "${PIGSTY_PG_PORT:-5432}:5432"
+    stop_signal: SIGRTMIN+3
+    restart: unless-stopped

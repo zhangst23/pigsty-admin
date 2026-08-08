@@ -1,0 +1,92 @@
+---
+#--------------------------------------------------------------#
+# 1. Infra User                                     [infra_user]
+#--------------------------------------------------------------#
+# create infra group and users before directory creation
+- import_tasks: user.yml
+  tags: infra_user
+
+#--------------------------------------------------------------#
+# 2. Infra Directory                                 [infra_dir]
+#--------------------------------------------------------------#
+# create all infra directories with proper ownership
+- import_tasks: dir.yml
+  tags: infra_dir
+
+#--------------------------------------------------------------#
+# 3. Environment                                     [infra_env]
+#--------------------------------------------------------------#
+# setup pigsty infra environment: env_dir, env_pg, env_var
+- import_tasks: env.yml
+  tags: infra_env
+
+#--------------------------------------------------------------#
+# 4. Packages                                        [infra_pkg]
+#--------------------------------------------------------------#
+# install infra packages: infra_pkg
+- import_tasks: pkg.yml
+  tags: infra_pkg
+
+#--------------------------------------------------------------#
+# 5. Certs                                          [infra_cert]
+#--------------------------------------------------------------#
+# issue /etc/pki/infra.{key,crt} for prometheus & patronictl
+# infra_cert_issue, infra_cert_copy
+- import_tasks: cert.yml
+  tags: infra_cert
+
+#--------------------------------------------------------------#
+# 6. DNS                                                   [dns]
+#--------------------------------------------------------------#
+# dns_config, dns_record, dns_launch
+- import_tasks: dns.yml
+  tags: dns
+
+#--------------------------------------------------------------#
+# 7. Nginx                                               [nginx]
+#--------------------------------------------------------------#
+# setup nginx, the web service portal
+# nginx_config, nginx_cert, nginx_static, nginx_launch, nginx_exporter
+- import_tasks: nginx.yml
+  when: nginx_enabled|bool
+  tags: nginx
+
+#--------------------------------------------------------------#
+# 8. Victoria                                         [victoria]
+#--------------------------------------------------------------#
+# vmetrics_config, vmetrics_launch, vlogs_config, vlogs_launch
+# vtraces_config, vtraces_launch, vmalert_config, vmalert_launch
+- import_tasks: victoria.yml
+  tags: victoria
+
+#--------------------------------------------------------------#
+# 9. AlertManager                                 [alertmanager]
+#--------------------------------------------------------------#
+# setup alertmanager: alertmanager_config, alertmanager_launch
+- import_tasks: alertmanager.yml
+  tags: alertmanager
+
+#--------------------------------------------------------------#
+# 10. Blackbox Exporter                               [blackbox]
+#--------------------------------------------------------------#
+# setup blackbox_exporter: blackbox_config, blackbox_launch
+- import_tasks: blackbox.yml
+  tags: blackbox
+
+#--------------------------------------------------------------#
+# 11. Grafana                                          [grafana]
+#--------------------------------------------------------------#
+# setup grafana, the visualization platform
+# grafana_clean, grafana_config, grafana_plugin
+# grafana_launch, grafana_provision
+- import_tasks: grafana.yml
+  tags: grafana
+
+#--------------------------------------------------------------#
+# 12. Register                                  [infra_register]
+#--------------------------------------------------------------#
+# register infra components to victoria
+- import_tasks: register.yml
+  tags: infra_register
+
+...

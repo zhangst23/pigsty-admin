@@ -1,0 +1,66 @@
+---
+{% if nginx_enabled|bool %}
+#--------------------------------------------------------------#
+# Nginx (Exporter @ {{ nginx_exporter_port|default(9113) }} )
+#--------------------------------------------------------------#
+- labels: { ip: {{ inventory_hostname }}, ins: nginx-{{ infra_seq }}, cls: nginx }
+  targets: [ {{ inventory_hostname }}:{{ nginx_exporter_port|default(9113) }} ]
+{% endif %}
+
+{% if vmetrics_enabled|bool %}
+#--------------------------------------------------------------#
+# VictoriaMetrics ({{ vmetrics_port|default(8428) }})
+#--------------------------------------------------------------#
+- labels: { ip: {{ inventory_hostname }}, ins: vmetrics-{{ infra_seq }}, cls: vmetrics }
+  targets: [ {{ inventory_hostname }}:{{ vmetrics_port|default(8428) }} ]
+{% endif %}
+
+{% if vlogs_enabled|bool %}
+#--------------------------------------------------------------#
+# VictoriaLogs ({{ vlogs_port|default(9428) }})
+#--------------------------------------------------------------#
+- labels: { ip: {{ inventory_hostname }}, ins: vlogs-{{ infra_seq }}, cls: vlogs }
+  targets: [ {{ inventory_hostname }}:{{ vlogs_port|default(9428) }} ]
+{% endif %}
+
+{% if vtraces_enabled|bool %}
+#--------------------------------------------------------------#
+# VictoriaTraces ({{ vtraces_port|default(10428) }})
+#--------------------------------------------------------------#
+- labels: { ip: {{ inventory_hostname }}, ins: vtraces-{{ infra_seq }}, cls: vtraces }
+  targets: [ {{ inventory_hostname }}:{{ vtraces_port|default(10428) }} ]
+{% endif %}
+
+{% if vmalert_enabled|bool and vmetrics_enabled|bool %}
+#--------------------------------------------------------------#
+# VMAlert ({{ vmalert_port|default(8880) }})
+#--------------------------------------------------------------#
+- labels: { ip: {{ inventory_hostname }}, ins: vmalert-{{ infra_seq }}, cls: vmalert }
+  targets: [ {{ inventory_hostname }}:{{ vmalert_port|default(8880) }} ]
+{% endif %}
+
+{% if alertmanager_enabled|bool %}
+#--------------------------------------------------------------#
+# AlertManager ({{ alertmanager_port|default(9059) }})
+#--------------------------------------------------------------#
+- labels: { ip: {{ inventory_hostname }}, ins: alertmanager-{{ infra_seq }}, cls: alertmanager }
+  targets: [ {{ inventory_hostname }}:{{ alertmanager_port|default(9059) }} ]
+{% endif %}
+
+{% if blackbox_enabled|bool %}
+#--------------------------------------------------------------#
+# BlackboxExporter ({{ blackbox_port|default(9115) }})
+#--------------------------------------------------------------#
+- labels: { ip: {{ inventory_hostname }}, ins: blackbox-{{ infra_seq }}, cls: blackbox }
+  targets: [ {{ inventory_hostname }}:{{ blackbox_port|default(9115) }} ]
+{% endif %}
+
+{% if grafana_enabled|bool %}
+#--------------------------------------------------------------#
+# Grafana ({{ grafana_port|default(3000) }})
+#--------------------------------------------------------------#
+- labels: { ip: {{ inventory_hostname }}, ins: grafana-{{ infra_seq }}, cls: grafana }
+  targets: [ {{ inventory_hostname }}:{{ grafana_port|default(3000) }} ]
+{% endif %}
+
+...

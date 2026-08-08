@@ -1,0 +1,138 @@
+#!/bin/bash
+set -uo pipefail
+#==============================================================#
+# File      :   redis-add
+# Desc      :   Create Redis Cluster/Node/Instances
+# Ctime     :   2022-05-14
+# Mtime     :   2026-01-18
+# Path      :   bin/redis-add
+# Deps      :   ansible-playbook, redis.yml
+# License   :   Apache-2.0 @ https://pigsty.io/docs/about/license/
+# Copyright :   2018-2026  Ruohang Feng / Vonng (rh@vonng.com)
+#==============================================================#
+APP_NAME="$(basename $0)"
+APP_DIR="$(cd $(dirname $0) && pwd)"
+PIGSTY_HOME=$(cd $(dirname ${APP_DIR}) && pwd)
+
+
+#--------------------------------------------------------------#
+# Usage
+#--------------------------------------------------------------#
+# bin/redis-add <cluster|ip> [...port]
+#
+# if ports are specified, only those corresponding instances will be added
+#
+# Examples:
+#   bin/redis-add redis-ms                # init a redis cluster
+#   bin/redis-add 10.10.10.10             # init a redis-node
+#   bin/redis-add 10.10.10.10 6379 6380   # init specific redis instances
+
+
+#--------------------------------------------------------------#
+# Utils
+#--------------------------------------------------------------#
+__CN='\033[0m';__CK='\033[0;30m';__CR='\033[0;31m';__CG='\033[0;32m';
+__CY='\033[0;33m';__CB='\033[0;34m';__CM='\033[0;35m';__CC='\033[0;36m';__CW='\033[0;37m';
+function log_info() {  printf "[${__CG} OK ${__CN}] ${__CG}$*${__CN}\n";   }
+function log_warn() {  printf "[${__CY}WARN${__CN}] ${__CY}$*${__CN}\n";   }
+function log_error() { printf "[${__CR}FAIL${__CN}] ${__CR}$*${__CN}\n";   }
+function log_debug() { printf "[${__CB}HINT${__CN}] ${__CB}$*${__CN}\n"; }
+function log_input() { printf "[${__CM} IN ${__CN}] ${__CM}$*\n=> ${__CN}"; }
+function log_hint()  { printf "${__CB}$*${__CN}\n"; }
+function log_line()  { printf "${__CM}[$*] ===========================================${__CN}\n"; }
+function is_valid_ip(){
+    if [[ "$1" =~ (([0-9]|[0-9]{2}|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[0-9]{2}|1[0-9]{2}|2[0-4][0-9]|25[0-5]) ]]; then
+        return 0
+    else
+        return 1
+    fi
+}
+
+#--------------------------------------------------------------#
+# Param
+#--------------------------------------------------------------#
+REDIS_SELECTOR=${1-''}
+log_info "redis selector: ${REDIS_SELECTOR}"
+
+if [[ -z "${REDIS_SELECTOR}" ]]; then
+	log_error "redis selector is empty"
+	log_hint "bin/redis-add <cls|ip> [port...]"
+	exit 1
+fi
+HOST_TYPE='cluster'
+if is_valid_ip "${REDIS_SELECTOR}"; then
+  HOST_TYPE='node'
+fi
+
+#--------------------------------------------------------------#
+# Init Redis Cluster/Node          [ 1 arg = init cluster/node ]
+#--------------------------------------------------------------#
+if (($# == 1)); then
+	log_line "EXECUTE"
+	log_warn "init redis ${HOST_TYPE} ${REDIS_SELECTOR}"
+	log_hint "$ ./redis.yml" -l "${REDIS_SELECTOR}"
+
+	"${PIGSTY_HOME}/redis.yml" -l "${REDIS_SELECTOR}"
+
+  if [[ $? -ne 0 ]]; then
+    log_line "FAILURE"
+    log_error "fail to create redis ${HOST_TYPE} ${REDIS_SELECTOR}"
+    exit 2
+  fi
+  log_line "SUMMARY"
+	log_info "create redis ${HOST_TYPE} ${REDIS_SELECTOR} complete"
+	exit 0
+fi
+
+
+#--------------------------------------------------------------#
+# Init Redis Instances             [2+ args = remove instances ]
+#--------------------------------------------------------------#
+
+#---------------------------------#
+# Check Param Agent
+#---------------------------------#
+if ! is_valid_ip "${REDIS_SELECTOR}"; then
+  log_error "you have to use bin/redis-add <ip> [port...] format"
+  exit 3
+fi
+
+for ((i=2; i<=$#; i++))
+do
+  if (( ${!i} < 1024 || ${!i} > 65535 )); then
+    log_error "invalid port number given: ${!i}"
+    exit 3
+  fi
+done
+
+#---------------------------------#
+# Planning
+#---------------------------------#
+log_line "PLANNING"
+log_info "init redis instances:"
+for ((i=2; i<=$#; i++))
+do
+    log_info "  - ${REDIS_SELECTOR}:${!i}"
+done
+log_hint "make sure redis node is already inited"
+
+#---------------------------------#
+# Init Redis Instance One by One
+#---------------------------------#
+for ((i=2; i<=$#; i++))
+do
+
+    log_line "EXECUTE"
+    log_info "init redis instance: ${REDIS_SELECTOR}:${!i}"
+    log_hint "$ ./redis.yml" -l "${REDIS_SELECTOR}" -e "redis_port=${!i}"
+
+    "${PIGSTY_HOME}/redis.yml" -l "${REDIS_SELECTOR}" -e "redis_port=${!i}"
+
+    if [[ $? -ne 0 ]]; then
+      log_line "FAILURE"
+      log_error "fail to init redis instance ${REDIS_SELECTOR}:${!i}"
+      exit 4
+    fi
+    log_info "init redis instance: ${REDIS_SELECTOR}:${!i} complete"
+
+done

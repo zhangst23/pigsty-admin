@@ -1,0 +1,13 @@
+# check .env files before running
+services:
+  pgadmin:
+    container_name: pgadmin
+    image: dpage/pgadmin4
+    restart: always
+    env_file:
+      - .env
+    volumes:
+      - /infra/pgadmin/servers.json:/pgadmin4/servers.json
+      - /infra/pgadmin/pgpass:/pgadmin4/pgpass:ro
+    ports:
+      - "${PGADMIN_PORT}:80"

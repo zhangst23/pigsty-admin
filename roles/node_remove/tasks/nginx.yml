@@ -1,0 +1,29 @@
+---
+#--------------------------------------------------------------#
+# Remove HAProxy from Nginx                     [register,nginx]
+#--------------------------------------------------------------#
+- name: remove haproxy instance from nginx
+  become: true
+  ignore_errors: true
+  block:
+
+    # /etc/nginx/conf.d/haproxy/upstream-{{ nodename }}.conf
+    - name: remove haproxy upstream from nginx
+      delegate_to: '{{ item }}'
+      loop: '{{ groups["infra"]|default([]) }}'
+      file: state=absent path=/etc/nginx/conf.d/haproxy/upstream-{{ nodename }}.conf
+
+    # /etc/nginx/conf.d/haproxy/location-{{ nodename }}.conf
+    - name: remove haproxy url location from nginx
+      delegate_to: '{{ item }}'
+      loop: '{{ groups["infra"]|default([]) }}'
+      file: state=absent path=/etc/nginx/conf.d/haproxy/location-{{ nodename }}.conf
+
+    # reload meta node nginx (maybe not appropriate here)
+    - name: reload nginx to remove haproxy upstream
+      run_once: true
+      delegate_to: '{{ item }}'
+      loop: '{{ groups["infra"]|default([]) }}'
+      systemd: name=nginx state=reloaded enabled=yes daemon_reload=yes
+
+...

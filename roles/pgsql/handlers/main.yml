@@ -1,0 +1,42 @@
+---
+- name: reload postgres
+  become_user: "{{ pg_dbsu|default('postgres') }}"
+  shell: |
+    {{ pg_bin_dir|default('/usr/pgsql/bin') }}/pg_ctl -D {{ pg_data|default('/pg/data') }} reload
+  args:
+    executable: /bin/bash
+
+- name: restart postgres
+  become_user: "{{ pg_dbsu|default('postgres') }}"
+  shell: |
+    {{ pg_bin_dir|default('/usr/pgsql/bin') }}/pg_ctl -D {{ pg_data|default('/pg/data') }} restart
+  args:
+    executable: /bin/bash
+
+- name: restart patroni postgres
+  become_user: "{{ pg_dbsu|default('postgres') }}"
+  shell: |
+    {% if pg_mode|default('pgsql') == 'citus' %} 
+    /usr/bin/patronictl -c /etc/patroni/patroni.yml restart {{ pg_shard }} --group {{ pg_group }} --force
+    {% else %}
+    /usr/bin/patronictl -c /etc/patroni/patroni.yml restart {{ pg_cluster }} --force
+    {% endif %}
+  args:
+    executable: /bin/bash
+
+- name: reload patroni
+  systemd: name=patroni state=reloaded daemon_reload=yes
+
+- name: restart patroni
+  systemd: name=patroni state=restarted daemon_reload=yes
+
+- name: reload pgbouncer
+  systemd: name=pgbouncer state=reloaded daemon_reload=yes
+
+- name: restart pgbouncer
+  systemd: name=pgbouncer state=restarted daemon_reload=yes
+
+- name: restart vip-manager
+  systemd: name=vip-manager state=restarted daemon_reload=yes
+
+...

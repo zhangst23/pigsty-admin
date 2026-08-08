@@ -1,0 +1,10 @@
+---
+#-----------------------------------------------------------------
+# NODE_ID
+#-----------------------------------------------------------------
+#nodename:           # [OPTIONAL] # node instance identity, use hostname if missing
+node_cluster: nodes  # [OPTIONAL] # node cluster identity, use 'nodes' if missing
+nodename_overwrite: true          # overwrite node's hostname with nodename?
+nodename_exchange: false          # exchange nodename among play hosts?
+node_id_from_pg: true             # use postgres identity as node identity if applicable?
+...

@@ -1,0 +1,20 @@
+server {
+    listen       {{ nginx_port }} default_server;
+    location / {
+        root        {{ nginx_home }};
+        index       index.html;
+        autoindex   on;
+        autoindex_exact_size on;
+        autoindex_localtime on;
+        autoindex_format html;
+    }
+
+    location ^~ /.well-known/acme-challenge/ {
+        root {{ nginx_home|default('/www') }}/acme;
+        try_files $uri =404;
+    }
+
+    location /nginx {
+        access_log off;
+    }
+}

@@ -1,0 +1,21 @@
+# -*- mode: conf -*-
+
+[Unit]
+Description=VictoriaLogs - high-performance log storage and search engine
+Documentation=https://docs.victoriametrics.com/victorialogs/
+After=network.target
+
+[Service]
+User=victoria
+EnvironmentFile=-/etc/default/vlogs
+ExecStart=/usr/bin/victoria-logs $VLOGS_OPTS
+ExecReload=/bin/kill -HUP $MAINPID
+TimeoutSec=120
+TimeoutStopSec=120
+Restart=on-failure
+RestartSec=5
+LimitNOFILE=4194304
+OOMScoreAdjust=-1000
+
+[Install]
+WantedBy=multi-user.target

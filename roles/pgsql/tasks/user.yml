@@ -1,0 +1,68 @@
+---
+#--------------------------------------------------------------#
+# Validate User Name                          [pg_user_validate]
+#--------------------------------------------------------------#
+- name: validate user name {{ user.name }}
+  tags: [ pg_user, pg_user_validate ]
+  assert:
+    that:
+      - user.name is match('^[a-z_][a-z0-9_@.-]{0,62}$')
+    fail_msg: "Invalid username '{{ user.name }}'. Must match ^[a-z_][a-z0-9_@.-]{0,62}$ max 63 chars)"
+
+#--------------------------------------------------------------#
+# Drop Business User                              [pg_user_drop]
+#--------------------------------------------------------------#
+# state: absent -> drop user
+# state: create -> create/update user (default)
+# skip system users: postgres, replicator, dbuser_dba, dbuser_monitor
+#--------------------------------------------------------------#
+- name: drop user {{ user.name }}
+  tags: [ pg_user, pg_user_drop ]
+  ignore_errors: true
+  when:
+    - pg_role == 'primary'
+    - user.state is defined and user.state == 'absent'
+    - user.name not in ['postgres', pg_replication_username|default('replicator'), pg_admin_username|default('dbuser_dba'), pg_monitor_username|default('dbuser_monitor')]
+  become_user: "{{ pg_dbsu|default('postgres') }}"
+  shell: |
+    /pg/bin/pg-drop-role "{{ user.name }}" "{{ pg_dbsu|default('postgres') }}" \
+      -h {{ pg_localhost|default('/var/run/postgresql') }} \
+      -p {{ pg_port|default(5432) }} --force
+  args: { executable: /bin/bash }
+
+
+#--------------------------------------------------------------#
+# Create Business User                          [pg_user_create]
+#--------------------------------------------------------------#
+- name: create postgres user
+  tags: [ pg_user, pg_user_config, pg_user_create ]
+  when: pg_role == 'primary' and (user.state is not defined or user.state == 'create')
+  block:
+
+    - name: prepare sql for user {{ user.name }}
+      tags: pg_user_config
+      template: src="pg-user.sql" dest=/pg/tmp/pg-user-{{ user.name }}.sql owner={{ pg_dbsu|default('postgres') }} group=postgres mode=0640
+
+    - name: create postgres user {{ user.name }}
+      tags: pg_user_create
+      ignore_errors: true
+      become_user: "{{ pg_dbsu|default('postgres') }}"
+      shell: |
+        {{ pg_bin_dir|default('/usr/pgsql/bin') }}/psql -h {{ pg_localhost|default('/var/run/postgresql') }} -p {{ pg_port|default(5432) }} -d postgres -AXtwqf /pg/tmp/pg-user-{{ user.name }}.sql || true;
+        role_exists=$({{ pg_bin_dir|default('/usr/pgsql/bin') }}/psql -h {{ pg_localhost|default('/var/run/postgresql') }} -p {{ pg_port|default(5432) }} -d postgres -AXtwqc "SELECT true WHERE EXISTS(SELECT * FROM pg_authid WHERE rolname = '{{ user.name }}' LIMIT 1)")
+        [[ -z "${role_exists}" ]] && exit 1 || exit 0
+      args: { executable: /bin/bash }
+
+- name: write plain biz user password to pgpass for citus cluster
+  tags: pg_user
+  become_user: "{{ pg_dbsu|default('postgres') }}"
+  when:
+    - pg_role == 'primary'
+    - pg_mode|default('pgsql') == 'citus'
+    - user.state is not defined or user.state != 'absent'
+    - user.password is defined and user.password != ''
+    - not user.password.startswith('md5') and not user.password.startswith('scram')
+  shell: /bin/bash /pg/bin/pg-pass-add "{{ user.name }}" "{{ user.password }}"
+  args: { executable: /bin/bash }
+  no_log: true
+...

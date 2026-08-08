@@ -1,0 +1,42 @@
+#--------------------------------------------------------------#
+# Config Redis                                    [redis_config]
+#--------------------------------------------------------------#
+# create data dir & config & systemd service
+- name: create redis resource dir
+  tags: [ redis_instance, redis_config ]
+  become: true
+  block:
+
+    # data dir @ /data/redis/<cluster>-<node>-<port> (default)
+    - name: create dir for {{ redis_cluster }}-{{ redis_node }}-{{ port }} @ {{ inventory_hostname }}
+      file: path={{ redis_fs_main }}/{{ redis_cluster }}-{{ redis_node }}-{{ port }} state=directory owner=redis mode=0700
+
+    # config @ /etc/redis/<port>.conf
+    - name: render config for {{ redis_cluster }}-{{ redis_node }}-{{ port }} @ {{ inventory_hostname }}
+      template: src={{ config_template }} dest=/etc/redis/{{ redis_cluster }}-{{ redis_node }}-{{ port }}.conf owner=redis mode=0700
+      vars:
+        upstream: "{{ conf['replica_of']|default(None) }}"
+        config_template: "{% if redis_mode == 'sentinel' %}redis-sentinel.conf{% else %}{{ redis_conf }}{% endif %}"
+
+    # services name examples:  redis-test-1-6379 , redis-sentinel-2-26379
+    - name: render systemd svc for {{ redis_cluster }}-{{ redis_node }}-{{ port }} @ {{ inventory_hostname }}
+      template: src=redis.svc dest={{ systemd_dir }}/{{ redis_cluster }}-{{ redis_node }}-{{ port }}.service owner=root mode=644
+
+
+#--------------------------------------------------------------#
+# launch                                          [redis_launch]
+#--------------------------------------------------------------#
+# NOTE: No health check after launch for performance reasons.
+# When deploying many instances in batch, health checks would
+# significantly slow down the deployment process. Users can
+# verify instance status manually with: redis-cli -p <port> ping
+- name: launch {{ redis_cluster }}-{{ redis_node }}-{{ port }} @ {{ inventory_hostname }}
+  tags: [ redis_instance, redis_launch ]
+  # systemd: name="{{ redis_cluster }}-{{ redis_node }}-{{ port }}.service" state=restarted enabled=yes daemon_reload=yes
+  shell: |
+    systemctl daemon-reload;
+    systemctl enable "{{ redis_cluster }}-{{ redis_node }}-{{ port }}.service"
+    systemctl restart "{{ redis_cluster }}-{{ redis_node }}-{{ port }}.service"
+  args: { executable: /bin/bash }
+
+...
