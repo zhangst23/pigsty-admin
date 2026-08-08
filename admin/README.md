@@ -7,17 +7,19 @@
 
 ### 📊 状态查看（只读，默认开启）
 - 集群列表：`pig pt list -f json`（列出所有 Patroni 集群名）
+- 集群 HA 状态：`pig pt status -o json`（Leader / 时间线 / 成员角色 / 复制延迟）
 - 集群状态：`pig pg list`
 - 实例状态：`pig pg status`
 - 实例角色：`pig pg role`
 - 当前连接：`pig pg ps -a`
 - 数据库列表：`pig pg psql -c "SELECT datname ..."`（本实例所有业务库）
+- 备份列表：`pig pb list -o json`（备份集时间 / 类型 / LSN / 大小）
 - 备份信息：`pig pb info`
 - 本地仓库：`files/` 目录
 - 主机清单：解析 `pigsty.yml`
 
 ### 🛠 运维操作（危险，需显式启用）
-| 操作 | 对应脚本 | 说明 |
+| 操作 | 对应命令 | 说明 |
 |------|----------|------|
 | 新增节点 | `bin/node-add` | 向库存追加并初始化节点 |
 | 移除节点 | `bin/node-rm` | 从集群移除节点（危险） |
@@ -27,6 +29,11 @@
 | 创建库 | `bin/pgsql-db` | 新建数据库 |
 | 安装扩展 | `bin/pgsql-ext` | 安装 PostgreSQL 扩展 |
 | 新增 Redis 集群 | `bin/redis-add` | 初始化 Redis 集群 |
+| 重载 PG 服务 | `pig do pgsql-svc <sel>` | 重载集群/实例服务 |
+| 刷新 HBA 规则 | `pig do pgsql-hba <sel>` | 重新渲染并加载 pg_hba |
+| Patroni 主从切换 | `pig pt switchover <cls>` | 触发主从切换（高风险） |
+| 添加远程监控目标 | `bin/pgmon-add` | 把集群加入监控 |
+| 移除远程监控目标 | `bin/pgmon-rm` | 移出监控（高风险） |
 
 > 所有危险操作在 Web 上会弹窗二次确认，且默认 **禁用**，需用 `ADMIN_DANGER=1` 启动。
 
