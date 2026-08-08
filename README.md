@@ -383,3 +383,20 @@ ADMIN_DANGER=1 python3 app.py
 启动后浏览器访问 `http://127.0.0.1:8080`。详细用法见 [admin/README.md](admin/README.md)。
 
 > ⚠️ 危险操作默认禁用，仅 `ADMIN_DANGER=1` 启动后可用，且每次执行需页面二次确认。
+
+---
+
+## 12. 首页静态文件（`www/`）
+
+`www/` 目录是 VPS 上 `/www` 的同步副本，由 nginx 作为站点根提供（对应 `http://<vps-ip>/` 主页）。
+导航栏已包含指向运维控制台的「运维管理」入口（`/admin/`）。
+
+| 文件 | 说明 |
+|------|------|
+| `index.html` / `zh.html` | 英文 / 中文首页 |
+| `404.html` / `pev.html` / `ca.crt` | 404 页 / Explain 可视化 / 自签 CA |
+| `acme/ logs/ pigsty/ report/ repos/ schema/` | 运行时目录占位（`.gitkeep`） |
+
+> ⚠️ 首页 HTML 中硬编码了当前 VPS 公网 IP，部署到其他机器需替换。
+
+同步回运行目录：`cp www/*.html www/ca.crt /www/ && nginx -s reload`。详见 [www/README.md](www/README.md)。

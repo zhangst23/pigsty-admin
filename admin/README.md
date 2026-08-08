@@ -53,22 +53,43 @@ ADMIN_HOST=0.0.0.0 ADMIN_PORT=9000 ADMIN_DANGER=1 python3 app.py
 
 ## 生产部署（systemd 自启 + Nginx 反代 + Basic Auth）
 
-推荐通过 systemd 托管，并由 Nginx 反向代理到 `/admin/` 子路径，前缀 Basic Auth 保护。
+部署配置统一放在仓库 `admin/deploy/` 目录下，便于纳入 git 版本管理：
 
-### 1. systemd 自启服务
+```
+admin/deploy/
+├── pigsty-admin.service     # systemd 服务单元
+├── admin-nginx.conf         # Nginx /admin/ 反代片段（include 引入）
+└── admin.htpasswd.example   # 密码文件示例（不含真实密码）
+```
 
-已提供 `/etc/systemd/system/pigsty-admin.service`（以 `root` 运行，监听 `127.0.0.1:9000`，
-启用危险操作并 `Restart=on-failure`）：
+> 真实的 `/etc/nginx/admin.htpasswd` 含明文凭据，已被 `.gitignore` 忽略，不会提交到 git。
+
+### 1. 从仓库同步到 /etc
 
 ```bash
+# systemd 服务
+cp admin/deploy/pigsty-admin.service /etc/systemd/system/pigsty-admin.service
 systemctl daemon-reload
 systemctl enable --now pigsty-admin.service
 systemctl status pigsty-admin.service
+
+# Nginx 反代：把片段 include 到 home.conf 的 server 块内
+cp admin/deploy/admin-nginx.conf /etc/nginx/conf.d/admin.conf
+# （或：将 admin-nginx.conf 内容 include 进 /etc/nginx/conf.d/home.conf 的 server 块）
+nginx -t && systemctl reload nginx
 ```
 
-### 2. Nginx 反代 + Basic Auth
+### 2. 生成 Basic Auth 密码
 
-`/etc/nginx/conf.d/home.conf` 中的 `/admin/` location：
+```bash
+# 从示例复制并生成真实密码文件（权限 640，属主 root:nginx）
+htpasswd -c /etc/nginx/admin.htpasswd admin    # 交互输入密码
+chmod 640 /etc/nginx/admin.htpasswd
+chown root:nginx /etc/nginx/admin.htpasswd
+systemctl reload nginx
+```
+
+`/admin/` location 配置（来自 `admin/deploy/admin-nginx.conf`）：
 
 ```nginx
 location /admin/ {
@@ -87,26 +108,13 @@ location /admin/ {
 }
 ```
 
-应用配置：`nginx -t && systemctl reload nginx`
+### 3. 访问凭据
 
-### 3. 访问凭据（Basic Auth）
+浏览器访问 `http://<vps-ip>/admin/` 会弹出账号密码框，输入你用 `htpasswd` 设置的
+用户名/密码（默认用户名为 `admin`）即可进入。
 
-密码文件：`/etc/nginx/admin.htpasswd`（属主 `root:nginx`，权限 `640`）。
-
-| 项目 | 值 |
-|------|-----|
-| 用户名 | `admin` |
-| 密码 | `Uu0FuhKIaj0a66du` |
-
-> ⚠️ 此为首次部署时自动生成的默认密码，请尽快修改：
-> ```bash
-> htpasswd /etc/nginx/admin.htpasswd admin   # 交互输入新密码
-> systemctl reload nginx
-> ```
-> 查看当前密码哈希（不可逆向，仅用于确认文件存在）：
-> `cat /etc/nginx/admin.htpasswd`
-
-访问地址：`http://<vps-ip>/admin/`，浏览器会弹出账号密码框，输入上述凭据进入。
+> 修改密码：`htpasswd /etc/nginx/admin.htpasswd admin`，然后 `systemctl reload nginx`。
+> 查看当前密码哈希（不可逆向）：`cat /etc/nginx/admin.htpasswd`。
 
 ## 安全建议
 

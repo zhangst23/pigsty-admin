@@ -1,0 +1,22 @@
+[Unit]
+Description=Pigsty Admin WebUI (运维管理控制台)
+Documentation=https://pigsty.io/docs
+After=network.target nginx.service
+Requires=nginx.service
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/root/pigsty/admin
+ExecStart=/usr/bin/python3 /root/pigsty/admin/app.py
+Environment=ADMIN_DANGER=1
+Environment=ADMIN_HOST=127.0.0.1
+Environment=ADMIN_PORT=9000
+Environment=PIGSTY_HOME=/root/pigsty
+Restart=on-failure
+RestartSec=3
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

@@ -52,3 +52,9 @@ _bmad-output
 test.yml
 dist/
 files/*.tgz
+
+#########################################################
+# admin webui secrets (keep *.example in repo, ignore real creds)
+#########################################################
+admin/deploy/admin.htpasswd
+/etc/nginx/admin.htpasswd
