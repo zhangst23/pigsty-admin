@@ -22,6 +22,16 @@
     <!-- 只读状态 -->
     <section class="panel">
       <h2>📊 状态查看 <span class="hint">（只读）</span></h2>
+      <div class="status-grid" id="statusGrid"></div>
+      <div class="output-wrap">
+        <button class="copy-btn" id="copyStatus" title="复制内容">⧉ 复制</button>
+        <pre id="statusOutput" class="output">点击上方按钮查看...</pre>
+      </div>
+    </section>
+
+    <!-- 危险操作 -->
+    <section class="panel">
+      <h2>🛠 运维操作 <span class="hint" id="dangerHint"></span></h2>
       <details class="guide">
         <summary>📝 创建数据库操作流程</summary>
         <ol>
@@ -34,16 +44,6 @@
             <code>define database xxx in pg_databases first</code>，属正常校验。</li>
         </ol>
       </details>
-      <div class="status-grid" id="statusGrid"></div>
-      <div class="output-wrap">
-        <button class="copy-btn" id="copyStatus" title="复制内容">⧉ 复制</button>
-        <pre id="statusOutput" class="output">点击上方按钮查看...</pre>
-      </div>
-    </section>
-
-    <!-- 危险操作 -->
-    <section class="panel">
-      <h2>🛠 运维操作 <span class="hint" id="dangerHint"></span></h2>
       <div class="ops-grid" id="opsGrid"></div>
       <div class="output-wrap">
         <button class="copy-btn" id="copyOp" title="复制内容">⧉ 复制</button>
