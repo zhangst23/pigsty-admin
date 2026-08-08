@@ -23,7 +23,18 @@ function esc(s) {
 // 初始化
 // ---------------------------------------------------------------------------
 async function init() {
-  const cfg = await api('/api/config');
+  // 先把事件监听绑定好（不依赖 config），避免 config 加载异常导致按钮失效
+  $('#refreshLog').addEventListener('click', refreshLog);
+  $('#modalCancel').addEventListener('click', closeModal);
+  $('#modalConfirm').addEventListener('click', doPendingOp);
+
+  let cfg;
+  try {
+    cfg = await api('api/config');
+  } catch (e) {
+    opOutput.textContent = '加载配置失败: ' + e + '\n请刷新页面重试。';
+    return;
+  }
   state.config = cfg;
 
   $('#env').innerHTML =
@@ -35,13 +46,9 @@ async function init() {
   $('#dangerHint').textContent = cfg.danger_enabled
     ? '（需要二次确认）' : '（当前为只读模式，需 ADMIN_DANGER=1 启动）';
 
-  renderStatus(cfg.status);
-  renderOps(cfg.ops);
+  renderStatus(cfg.status || []);
+  renderOps(cfg.ops || []);
   refreshLog();
-
-  $('#refreshLog').addEventListener('click', refreshLog);
-  $('#modalCancel').addEventListener('click', closeModal);
-  $('#modalConfirm').addEventListener('click', doPendingOp);
 }
 
 // ---------------------------------------------------------------------------
@@ -61,7 +68,7 @@ function renderStatus(statusList) {
 
 async function runStatus(s) {
   statusOutput.textContent = '加载中...';
-  const r = await api('/api/status/' + s.id);
+  const r = await api('api/status/' + s.id);
   statusOutput.textContent = (r.text || '(空)') +
     (r.error ? '\n\n[错误] ' + r.error : '');
 }
@@ -122,7 +129,7 @@ async function doPendingOp() {
   const { op, params } = state.pendingOp;
   $('#modal').hidden = true;
   opOutput.textContent = `执行中: ${op.name} ...\n`;
-  const r = await api('/api/op/' + op.id, {
+  const r = await api('api/op/' + op.id, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(params),

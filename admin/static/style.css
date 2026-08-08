@@ -32,6 +32,7 @@ body{background:var(--bg);color:var(--text);font:14px/1.5 -apple-system,"Segoe U
 .badge.fail{background:rgba(255,92,92,.15);color:var(--danger)}
 .badge.status{background:rgba(79,140,255,.15);color:var(--accent)}
 .modal{position:fixed;inset:0;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;z-index:50}
+.modal[hidden]{display:none}
 .modal-card{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:24px;max-width:480px;width:90%}
 .modal-card h3{color:var(--danger);margin-bottom:12px}
 .modal-card p{color:var(--muted);margin-bottom:18px;white-space:pre-wrap;word-break:break-all}
