@@ -55,6 +55,9 @@ all:
             # define extensions in database : https://pigsty.io/docs/pgsql/ext/create
             extensions: [ postgis, vector ]
 
+          - name: pg1
+            comment: "created via admin webui"
+
         pg_hba_rules:   # https://pigsty.io/docs/pgsql/config/hba
           - { user: all ,db: all ,addr: intra ,auth: pwd ,title: 'everyone intranet access with password' ,order: 800 }
         pg_crontab:     # https://pigsty.io/docs/pgsql/admin/crontab
