@@ -102,6 +102,50 @@ def status_clusters():
     return {"rc": rc, "text": out + (("\n" + err) if err else ""), "error": err.strip()}
 
 
+def status_pg_status():
+    """本地 PostgreSQL 实例状态（pig pg status）。"""
+    rc, out, err = run(["pig", "pg", "status"])
+    return {"rc": rc, "text": out + (("\n" + err) if err else ""), "error": err.strip()}
+
+
+def status_pg_role():
+    """检测本地实例角色（primary / replica），以 JSON 结构化输出。"""
+    rc, out, err = run(["pig", "pg", "role", "-V"])
+    return {"rc": rc, "text": out + (("\n" + err) if err else ""), "error": err.strip()}
+
+
+def status_pg_ps():
+    """当前连接（pig pg ps）。"""
+    rc, out, err = run(["pig", "pg", "ps", "-a"])
+    return {"rc": rc, "text": out + (("\n" + err) if err else ""), "error": err.strip()}
+
+
+def status_pt_clusters():
+    """列出所有 Patroni 集群名称（pig pt list -f json）。"""
+    rc, out, err = run(["pig", "pt", "list", "-f", "json"])
+    if rc != 0:
+        # 回退：尝试不带 -f（旧版 pig），用文本解析
+        rc2, out2, err2 = run(["pig", "pt", "list"])
+        if rc2 == 0:
+            return {"rc": 0, "text": out2, "error": ""}
+        return {"rc": rc, "text": out, "error": err.strip() or "pig pt list 执行失败"}
+    try:
+        rows = json.loads(out) if out.strip().startswith("[") else []
+    except json.JSONDecodeError:
+        return {"rc": 0, "text": out, "error": ""}
+    names = []
+    for r in rows:
+        c = r.get("Cluster") or r.get("cluster")
+        if c and c not in names:
+            names.append(c)
+    if not names:
+        return {"rc": 0, "text": "(未发现任何 Patroni 集群)", "error": ""}
+    return {"rc": 0,
+            "text": "共 {} 个集群:\n".format(len(names)) +
+                    "\n".join("  • {}".format(n) for n in names),
+            "error": ""}
+
+
 def status_backup():
     rc, out, err = run(["pig", "pb", "info"])
     return {"rc": rc, "text": out + (("\n" + err) if err else ""), "error": err.strip()}
@@ -145,7 +189,11 @@ def list_inventory():
 
 def api_status():
     return [
+        {"id": "pt_clusters", "name": "集群列表 (pig pt list)", "fn": status_pt_clusters},
         {"id": "clusters", "name": "集群状态 (pig pg list)", "fn": status_clusters},
+        {"id": "pg_status", "name": "实例状态 (pig pg status)", "fn": status_pg_status},
+        {"id": "pg_role", "name": "实例角色 (pig pg role)", "fn": status_pg_role},
+        {"id": "pg_ps", "name": "当前连接 (pig pg ps)", "fn": status_pg_ps},
         {"id": "backup", "name": "备份信息 (pig pb info)", "fn": status_backup},
         {"id": "repo", "name": "本地仓库 (files)", "fn": status_repo},
         {"id": "inventory", "name": "主机清单 (pigsty.yml)", "fn": list_inventory},
