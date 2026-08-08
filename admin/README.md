@@ -51,13 +51,71 @@ ADMIN_HOST=0.0.0.0 ADMIN_PORT=9000 ADMIN_DANGER=1 python3 app.py
 | `ADMIN_DANGER` | `0` | 置 `1` 启用危险操作按钮 |
 | `PIGSTY_HOME` | `/root/pigsty` | Pigsty 安装目录 |
 
+## 生产部署（systemd 自启 + Nginx 反代 + Basic Auth）
+
+推荐通过 systemd 托管，并由 Nginx 反向代理到 `/admin/` 子路径，前缀 Basic Auth 保护。
+
+### 1. systemd 自启服务
+
+已提供 `/etc/systemd/system/pigsty-admin.service`（以 `root` 运行，监听 `127.0.0.1:9000`，
+启用危险操作并 `Restart=on-failure`）：
+
+```bash
+systemctl daemon-reload
+systemctl enable --now pigsty-admin.service
+systemctl status pigsty-admin.service
+```
+
+### 2. Nginx 反代 + Basic Auth
+
+`/etc/nginx/conf.d/home.conf` 中的 `/admin/` location：
+
+```nginx
+location /admin/ {
+    auth_basic           "Pigsty Admin 运维控制台";
+    auth_basic_user_file /etc/nginx/admin.htpasswd;
+
+    proxy_pass http://127.0.0.1:9000/;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_read_timeout 900s;
+    proxy_send_timeout 900s;
+    proxy_no_cache 1;
+    add_header Cache-Control "no-store, no-cache, must-revalidate" always;
+}
+```
+
+应用配置：`nginx -t && systemctl reload nginx`
+
+### 3. 访问凭据（Basic Auth）
+
+密码文件：`/etc/nginx/admin.htpasswd`（属主 `root:nginx`，权限 `640`）。
+
+| 项目 | 值 |
+|------|-----|
+| 用户名 | `admin` |
+| 密码 | `Uu0FuhKIaj0a66du` |
+
+> ⚠️ 此为首次部署时自动生成的默认密码，请尽快修改：
+> ```bash
+> htpasswd /etc/nginx/admin.htpasswd admin   # 交互输入新密码
+> systemctl reload nginx
+> ```
+> 查看当前密码哈希（不可逆向，仅用于确认文件存在）：
+> `cat /etc/nginx/admin.htpasswd`
+
+访问地址：`http://<vps-ip>/admin/`，浏览器会弹出账号密码框，输入上述凭据进入。
+
 ## 安全建议
 
-- 默认只监听 `127.0.0.1`；如需远程访问请配合 SSH 端口转发：
-  `ssh -L 8080:127.0.0.1:8080 user@<pigsty-host>`
+- 通过 Nginx 反代 + Basic Auth 暴露到公网，已在本仓库部署中启用；
+  不要将 `app.py` 直接以 `ADMIN_HOST=0.0.0.0` 裸奔在公网端口。
 - 危险操作（删除集群/节点、建用户库等）会调用 Ansible Playbook，
   执行前务必在弹窗中核对参数，并确认有近期备份。
-- 本服务无内置认证，请勿在不受信任的网络中开放。
+- 若需更严格控制，可额外在 Nginx `/admin/` location 加 `allow/deny` IP 白名单。
+- 修改 Basic Auth 密码或回收访问权限，只需更新 `/etc/nginx/admin.htpasswd` 并重载 Nginx。
 
 ## 文件结构
 
