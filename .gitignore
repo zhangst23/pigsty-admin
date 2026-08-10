@@ -32,7 +32,6 @@ docker/data/
 .vscode/
 .claude/
 .codex/
-docs/
 llm.txt
 .DS_Store
 __pycache__/
