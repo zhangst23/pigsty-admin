@@ -57,6 +57,206 @@ all:
 
           - name: pg1
             comment: "created via admin webui"
+          - name: pg2
+            comment: "stress test db 2"
+          - name: pg3
+            comment: "stress test db 3"
+          - name: pg4
+            comment: "stress test db 4"
+          - name: pg5
+            comment: "stress test db 5"
+          - name: pg6
+            comment: "stress test db 6"
+          - name: pg7
+            comment: "stress test db 7"
+          - name: pg8
+            comment: "stress test db 8"
+          - name: pg9
+            comment: "stress test db 9"
+          - name: pg10
+            comment: "stress test db 10"
+          - name: pg11
+            comment: "stress test db 11"
+          - name: pg12
+            comment: "stress test db 12"
+          - name: pg13
+            comment: "stress test db 13"
+          - name: pg14
+            comment: "stress test db 14"
+          - name: pg15
+            comment: "stress test db 15"
+          - name: pg16
+            comment: "stress test db 16"
+          - name: pg17
+            comment: "stress test db 17"
+          - name: pg18
+            comment: "stress test db 18"
+          - name: pg19
+            comment: "stress test db 19"
+          - name: pg20
+            comment: "stress test db 20"
+          - name: pg21
+            comment: "stress test db 21"
+          - name: pg22
+            comment: "stress test db 22"
+          - name: pg23
+            comment: "stress test db 23"
+          - name: pg24
+            comment: "stress test db 24"
+          - name: pg25
+            comment: "stress test db 25"
+          - name: pg26
+            comment: "stress test db 26"
+          - name: pg27
+            comment: "stress test db 27"
+          - name: pg28
+            comment: "stress test db 28"
+          - name: pg29
+            comment: "stress test db 29"
+          - name: pg30
+            comment: "stress test db 30"
+          - name: pg31
+            comment: "stress test db 31"
+          - name: pg32
+            comment: "stress test db 32"
+          - name: pg33
+            comment: "stress test db 33"
+          - name: pg34
+            comment: "stress test db 34"
+          - name: pg35
+            comment: "stress test db 35"
+          - name: pg36
+            comment: "stress test db 36"
+          - name: pg37
+            comment: "stress test db 37"
+          - name: pg38
+            comment: "stress test db 38"
+          - name: pg39
+            comment: "stress test db 39"
+          - name: pg40
+            comment: "stress test db 40"
+          - name: pg41
+            comment: "stress test db 41"
+          - name: pg42
+            comment: "stress test db 42"
+          - name: pg43
+            comment: "stress test db 43"
+          - name: pg44
+            comment: "stress test db 44"
+          - name: pg45
+            comment: "stress test db 45"
+          - name: pg46
+            comment: "stress test db 46"
+          - name: pg47
+            comment: "stress test db 47"
+          - name: pg48
+            comment: "stress test db 48"
+          - name: pg49
+            comment: "stress test db 49"
+          - name: pg50
+            comment: "stress test db 50"
+          - name: pg51
+            comment: "stress test db 51"
+          - name: pg52
+            comment: "stress test db 52"
+          - name: pg53
+            comment: "stress test db 53"
+          - name: pg54
+            comment: "stress test db 54"
+          - name: pg55
+            comment: "stress test db 55"
+          - name: pg56
+            comment: "stress test db 56"
+          - name: pg57
+            comment: "stress test db 57"
+          - name: pg58
+            comment: "stress test db 58"
+          - name: pg59
+            comment: "stress test db 59"
+          - name: pg60
+            comment: "stress test db 60"
+          - name: pg61
+            comment: "stress test db 61"
+          - name: pg62
+            comment: "stress test db 62"
+          - name: pg63
+            comment: "stress test db 63"
+          - name: pg64
+            comment: "stress test db 64"
+          - name: pg65
+            comment: "stress test db 65"
+          - name: pg66
+            comment: "stress test db 66"
+          - name: pg67
+            comment: "stress test db 67"
+          - name: pg68
+            comment: "stress test db 68"
+          - name: pg69
+            comment: "stress test db 69"
+          - name: pg70
+            comment: "stress test db 70"
+          - name: pg71
+            comment: "stress test db 71"
+          - name: pg72
+            comment: "stress test db 72"
+          - name: pg73
+            comment: "stress test db 73"
+          - name: pg74
+            comment: "stress test db 74"
+          - name: pg75
+            comment: "stress test db 75"
+          - name: pg76
+            comment: "stress test db 76"
+          - name: pg77
+            comment: "stress test db 77"
+          - name: pg78
+            comment: "stress test db 78"
+          - name: pg79
+            comment: "stress test db 79"
+          - name: pg80
+            comment: "stress test db 80"
+          - name: pg81
+            comment: "stress test db 81"
+          - name: pg82
+            comment: "stress test db 82"
+          - name: pg83
+            comment: "stress test db 83"
+          - name: pg84
+            comment: "stress test db 84"
+          - name: pg85
+            comment: "stress test db 85"
+          - name: pg86
+            comment: "stress test db 86"
+          - name: pg87
+            comment: "stress test db 87"
+          - name: pg88
+            comment: "stress test db 88"
+          - name: pg89
+            comment: "stress test db 89"
+          - name: pg90
+            comment: "stress test db 90"
+          - name: pg91
+            comment: "stress test db 91"
+          - name: pg92
+            comment: "stress test db 92"
+          - name: pg93
+            comment: "stress test db 93"
+          - name: pg94
+            comment: "stress test db 94"
+          - name: pg95
+            comment: "stress test db 95"
+          - name: pg96
+            comment: "stress test db 96"
+          - name: pg97
+            comment: "stress test db 97"
+          - name: pg98
+            comment: "stress test db 98"
+          - name: pg99
+            comment: "stress test db 99"
+          - name: pg100
+            comment: "stress test db 100"
+
+            
 
         pg_hba_rules:   # https://pigsty.io/docs/pgsql/config/hba
           - { user: all ,db: all ,addr: intra ,auth: pwd ,title: 'everyone intranet access with password' ,order: 800 }

@@ -3,11 +3,13 @@
 const state = {
   config: null,
   pendingOp: null,   // 待确认的危险操作 {op, params}
+  pendingShell: null, // 待确认的命令字符串
 };
 
 const $ = (sel) => document.querySelector(sel);
 const statusOutput = $('#statusOutput');
 const opOutput = $('#opOutput');
+const shellOutput = $('#shellOutput');
 
 // 所有请求均使用相对路径，使页面可部署在子路径（如 /admin/）下
 async function api(path, opts) {
@@ -26,9 +28,17 @@ async function init() {
   // 先把事件监听绑定好（不依赖 config），避免 config 加载异常导致按钮失效
   $('#refreshLog').addEventListener('click', refreshLog);
   $('#modalCancel').addEventListener('click', closeModal);
-  $('#modalConfirm').addEventListener('click', doPendingOp);
+  $('#modalConfirm').addEventListener('click', doPendingConfirm);
   $('#copyStatus').addEventListener('click', () => copyOutput(statusOutput, $('#copyStatus')));
   $('#copyOp').addEventListener('click', () => copyOutput(opOutput, $('#copyOp')));
+  $('#copyShell').addEventListener('click', () => copyOutput(shellOutput, $('#copyShell')));
+
+  // 左侧导航切换
+  document.querySelectorAll('.nav-item').forEach(btn => {
+    btn.addEventListener('click', () => switchNav(btn.dataset.view));
+  });
+  // 命令操作
+  $('#shellRun').addEventListener('click', onShellRun);
 
   let cfg;
   try {
@@ -45,12 +55,31 @@ async function init() {
     `危险操作: <b style="color:${cfg.danger_enabled?'var(--danger)':'var(--muted)'}">` +
     `${cfg.danger_enabled ? '已启用' : '已禁用（只读）'}</b>`;
 
-  $('#dangerHint').textContent = cfg.danger_enabled
+  const hint = cfg.danger_enabled
     ? '（需要二次确认）' : '（当前为只读模式，需 ADMIN_DANGER=1 启动）';
+  $('#dangerHint').textContent = hint;
+  $('#shellHint').textContent = hint;
+  if (!cfg.danger_enabled) {
+    $('#shellCmd').disabled = true;
+    $('#shellRun').disabled = true;
+    $('#shellCmd').placeholder = '危险操作已禁用，请以 ADMIN_DANGER=1 启动服务';
+  }
 
   renderStatus(cfg.status || []);
   renderOps(cfg.ops || []);
   refreshLog();
+}
+
+// ---------------------------------------------------------------------------
+// 左侧导航切换
+// ---------------------------------------------------------------------------
+function switchNav(view) {
+  document.querySelectorAll('.nav-item').forEach(b => {
+    b.classList.toggle('active', b.dataset.view === view);
+  });
+  document.querySelectorAll('.view').forEach(v => {
+    v.classList.toggle('hidden', v.id !== 'view-' + view);
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -144,9 +173,13 @@ function openModal(op, params) {
 function closeModal() {
   $('#modal').hidden = true;
   state.pendingOp = null;
+  state.pendingShell = null;
 }
 
-async function doPendingOp() {
+async function doPendingConfirm() {
+  if (state.pendingShell !== null) {
+    return doShellExec(state.pendingShell);
+  }
   if (!state.pendingOp) return closeModal();
   const { op, params } = state.pendingOp;
   $('#modal').hidden = true;
@@ -160,6 +193,39 @@ async function doPendingOp() {
     (r.error ? '\n\n[错误] ' + r.error : '');
   state.pendingOp = null;
   refreshLog();
+}
+
+// ---------------------------------------------------------------------------
+// 命令操作（危险）
+// ---------------------------------------------------------------------------
+function onShellRun() {
+  const cmd = $('#shellCmd').value.trim();
+  if (!cmd) return;
+  state.pendingShell = cmd;
+  $('#modalDesc').textContent =
+    `即将执行命令：\n${cmd}\n\n该命令会直接在服务器上运行，请在确认无误后点击「确认执行」。\n（仅允许 Pigsty 相关命令，禁止管道/重定向/复合命令）`;
+  $('#modal').hidden = false;
+}
+
+async function doShellExec(cmd) {
+  $('#modal').hidden = true;
+  shellOutput.textContent = `执行中: ${cmd}\n（耗时可能较长，请稍候）...\n`;
+  $('#shellRun').disabled = true;
+  try {
+    const r = await api('api/shell', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ command: cmd }),
+    });
+    shellOutput.textContent = `[返回码 ${r.rc}]\n` + (r.text || '(无输出)') +
+      (r.error ? '\n\n[错误] ' + r.error : '');
+  } catch (e) {
+    shellOutput.textContent = '请求失败: ' + e;
+  } finally {
+    $('#shellRun').disabled = false;
+    state.pendingShell = null;
+    refreshLog();
+  }
 }
 
 // ---------------------------------------------------------------------------

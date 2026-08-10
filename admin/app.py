@@ -51,6 +51,47 @@ DANGER_WHITELIST = [
     "redis-add",
 ]
 
+# 命令操作（/api/shell）允许的命令前缀。
+# 仅允许与 Pigsty 运维相关的命令，避免任意 shell 命令执行风险。
+SHELL_ALLOW_PREFIX = [
+    "cd ",                          # 仅允许 cd /root/pigsty && 形式需另行约束
+    "ansible-playbook ",
+    "ansible ",
+    "pig ",
+    "pg ",
+    "psql ",
+    "pgbackrest ",
+    "patronictl ",
+    "pg_ctl ",
+    "systemctl ",
+    "df ", "free ", "uptime ", "ps ", "top ", "ip ", "ss ",
+]
+
+
+def shell_allowed(command):
+    """校验命令是否被允许执行（防任意命令执行）。返回 (ok, reason)。"""
+    if not command:
+        return False, "命令为空"
+    # 允许的特殊前缀：cd 到 pigsty 目录后再执行运维命令（最常见的用法）
+    CD_PREFIX = "cd /root/pigsty && "
+    rest = command
+    if command.startswith(CD_PREFIX):
+        rest = command[len(CD_PREFIX):].strip()
+    # 禁止常见高危/逃逸字符与 shell 元命令（我们的命令只允许空格参数，不解释 shell）
+    forbidden = [";", "||", "|", "$((", "${", "`", ">", ">>", "<",
+                 "sudo", "rm ", "mv ", "cp ", "chmod", "chown", "kill",
+                 "curl", "wget", "nc ", "ssh", "scp", "echo", "cat ", "tee"]
+    for f in forbidden:
+        if f in rest:
+            return False, "命令含不允许的字符/子串: '{}'（命令操作仅支持单次调用，不含管道/重定向/复合命令）".format(f)
+    # 必须以白名单前缀开头（rest 或原命令）
+    target = rest if rest != command else command
+    for p in SHELL_ALLOW_PREFIX:
+        if target.startswith(p.strip()):
+            return True, ""
+    return False, ("命令不在允许列表内（仅允许: " +
+                   ", ".join(p.strip() for p in SHELL_ALLOW_PREFIX) + "）")
+
 # 简单的内存日志（最近 200 条）
 LOG_LIMIT = 200
 _op_log = []
@@ -547,6 +588,36 @@ class Handler(BaseHTTPRequestHandler):
     def do_POST(self):
         parsed = urlparse(self.path)
         path = parsed.path
+
+        # ---- 命令操作：直接执行受限命令 ----
+        if path == "/api/shell":
+            if not DANGER_ENABLED:
+                self._send_json({"rc": 403, "text": "", "error":
+                    "命令操作已禁用。请以 ADMIN_DANGER=1 启动服务后重试。"}, 403)
+                return
+            length = int(self.headers.get("Content-Length", 0))
+            raw = self.rfile.read(length) if length else b""
+            try:
+                data = json.loads(raw.decode("utf-8")) if raw else {}
+            except json.JSONDecodeError:
+                data = {}
+            command = (data.get("command") or "").strip()
+            if not command:
+                self._send_json({"rc": 400, "text": "", "error": "命令为空"}, 400)
+                return
+            ok, why = shell_allowed(command)
+            if not ok:
+                self._send_json({"rc": 403, "text": "", "error": why}, 403)
+                return
+            try:
+                argv = shlex.split(command)
+            except ValueError as e:
+                self._send_json({"rc": 400, "text": "", "error": "命令解析失败: " + str(e)}, 400)
+                return
+            rc, out, err = run(argv, timeout=1800)
+            log_op("shell", command, rc == 0, (err or "")[:200])
+            self._send_json({"rc": rc, "text": out, "error": err})
+            return
 
         if not path.startswith("/api/op/"):
             self.send_error(404)
