@@ -27,6 +27,7 @@ for n in $(seq 1 100); do
       PGRST_JWT_SECRET: ${JWT}
       PGRST_DB_CHANNEL: pgrst
       PGRST_DB_CHANNEL_ENABLED: "true"
+      PGRST_DB_POOL: "2"
     ports:
       - "127.0.0.1:${port}:${port}"
 EOF
