@@ -18,6 +18,9 @@
 8. [Playbook 速查表](#8-playbook-速查表)
 9. [配置模板](#9-配置模板)
 10. [常见问题](#10-常见问题)
+11. [运维 Web 控制台（`admin/`）](#11-运维-web-控制台admin)
+12. [首页静态文件（`www/`）](#12-首页静态文件www)
+13. [对外数据库 API 中台（PostgREST + Nginx）](#13-对外数据库-api-中台postgrest--nginx)
 
 ---
 
@@ -400,3 +403,71 @@ ADMIN_DANGER=1 python3 app.py
 > ⚠️ 首页 HTML 中硬编码了当前 VPS 公网 IP，部署到其他机器需替换。
 
 同步回运行目录：`cp www/*.html www/ca.crt /www/ && nginx -s reload`。详见 [www/README.md](www/README.md)。
+
+---
+
+## 13. 对外数据库 API 中台（PostgREST + Nginx）
+
+基于 Pigsty 搭建的「类 Supabase 数据库中台」，让 AI 建站平台（类 Lovable）通过 **HTTPS + API Key** 自动连接并使用 PostgreSQL，**无需直接暴露 5432 与处理 pg_hba 的 IP 限制**。
+
+采用「API Gateway + PostgREST Worker Pool」架构：**每个项目库一个 PostgREST 实例**，由 Nginx 按路径 `/pgN/` 路由，对外形如「一个域名动态选库」。
+
+### 13.1 入口与鉴权
+
+```
+Base URL : https://pigstyapi.yunyingx.com
+Header   : apikey: bc1608bff236f578f166f8d3515f16f2
+```
+
+- `https://pigstyapi.yunyingx.com/`        → `appdb`（管理库，保留 `create_database` / `create_table` RPC）
+- `https://pigstyapi.yunyingx.com/pgN/...` → `pgN` 库（pg1~pg100 全部已暴露）
+- 无 `apikey` → `401`；带 `apikey` → 正常响应
+
+### 13.2 AI 平台接入示例
+
+```text
+操作 pg1 库里的 users 表：
+  GET    /pg1/users
+  POST   /pg1/users            {"name":"alice"}
+  PATCH  /pg1/users?id=eq.1    {"name":"bob"}
+  DELETE /pg1/users?id=eq.1
+
+获取 pg1 库结构：
+  GET /pg1/openapi.json
+```
+
+路径前缀 `/pgN/` 即「选择哪个数据库」，其余 PostgREST 语法与官方完全一致。
+
+### 13.3 自助建表 RPC
+
+每个库（含 appdb、pg1~pg100）均已部署 `create_table`，建表后自动刷新 schema（无需重启）：
+
+```http
+POST /pg4/rpc/create_table
+{ "table_name": "rpc_test", "columns": "id serial primary key, name text" }
+```
+
+> 注意：PostgREST 16 的 schema 刷新指令是 `NOTIFY pgrst, 'reload schema'`（不是 `reload config`）。
+
+### 13.4 部署文件
+
+| 文件 | 作用 |
+|------|------|
+| `app/postgrest/docker-compose.multi.yml` | 100 个 PostgREST service（pg1→3101 … pg100→3200），由 `gen_multi.sh` 生成 |
+| `/etc/nginx/conf.d/pigstyapi-multi.conf` | `/pgN/` 路径路由 + 每库 OpenAPI 端点 + API Key 鉴权 |
+| `/usr/local/bin/pigstyapi-openapi-sync-all.sh` | 批量同步 appdb + pg1~pg100 的 OpenAPI.json 到 `/var/www/html/` |
+
+启动命令：
+
+```bash
+cd app/postgrest && docker compose -f docker-compose.multi.yml up -d
+nginx -s reload
+```
+
+### 13.5 权限说明
+
+`dbuser_app` 通过 superuser 在每个 `pgN` 库 `GRANT ALL ON SCHEMA public` 获得读写权限，**库的 owner 保持不变**。
+
+### 13.6 详细文档
+
+完整方案、踩坑记录与验证见 [docs/pigsty-postgrest-nginx-api.md](docs/pigsty-postgrest-nginx-api.md)（§1~§17）。

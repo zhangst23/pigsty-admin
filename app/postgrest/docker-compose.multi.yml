@@ -1,0 +1,1404 @@
+# Auto-generated: 100 PostgREST workers (pg1..pg100)
+# port = 3100 + n  (appdb keeps 3001)
+# docs/pigsty-postgrest-nginx-api.md §17
+services:
+  postgrest_pg1:
+    container_name: postgrest_pg1
+    image: postgrest/postgrest
+    restart: always
+    environment:
+      PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg1
+      PGRST_DB_SCHEMA: public
+      PGRST_DB_ANON_ROLE: dbuser_app
+      PGRST_SERVER_PORT: 3101
+      PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
+      PGRST_DB_CHANNEL: pgrst
+      PGRST_DB_CHANNEL_ENABLED: "true"
+    ports:
+      - "127.0.0.1:3101:3101"
+  postgrest_pg2:
+    container_name: postgrest_pg2
+    image: postgrest/postgrest
+    restart: always
+    environment:
+      PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg2
+      PGRST_DB_SCHEMA: public
+      PGRST_DB_ANON_ROLE: dbuser_app
+      PGRST_SERVER_PORT: 3102
+      PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
+      PGRST_DB_CHANNEL: pgrst
+      PGRST_DB_CHANNEL_ENABLED: "true"
+    ports:
+      - "127.0.0.1:3102:3102"
+  postgrest_pg3:
+    container_name: postgrest_pg3
+    image: postgrest/postgrest
+    restart: always
+    environment:
+      PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg3
+      PGRST_DB_SCHEMA: public
+      PGRST_DB_ANON_ROLE: dbuser_app
+      PGRST_SERVER_PORT: 3103
+      PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
+      PGRST_DB_CHANNEL: pgrst
+      PGRST_DB_CHANNEL_ENABLED: "true"
+    ports:
+      - "127.0.0.1:3103:3103"
+  postgrest_pg4:
+    container_name: postgrest_pg4
+    image: postgrest/postgrest
+    restart: always
+    environment:
+      PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg4
+      PGRST_DB_SCHEMA: public
+      PGRST_DB_ANON_ROLE: dbuser_app
+      PGRST_SERVER_PORT: 3104
+      PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
+      PGRST_DB_CHANNEL: pgrst
+      PGRST_DB_CHANNEL_ENABLED: "true"
+    ports:
+      - "127.0.0.1:3104:3104"
+  postgrest_pg5:
+    container_name: postgrest_pg5
+    image: postgrest/postgrest
+    restart: always
+    environment:
+      PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg5
+      PGRST_DB_SCHEMA: public
+      PGRST_DB_ANON_ROLE: dbuser_app
+      PGRST_SERVER_PORT: 3105
+      PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
+      PGRST_DB_CHANNEL: pgrst
+      PGRST_DB_CHANNEL_ENABLED: "true"
+    ports:
+      - "127.0.0.1:3105:3105"
+  postgrest_pg6:
+    container_name: postgrest_pg6
+    image: postgrest/postgrest
+    restart: always
+    environment:
+      PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg6
+      PGRST_DB_SCHEMA: public
+      PGRST_DB_ANON_ROLE: dbuser_app
+      PGRST_SERVER_PORT: 3106
+      PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
+      PGRST_DB_CHANNEL: pgrst
+      PGRST_DB_CHANNEL_ENABLED: "true"
+    ports:
+      - "127.0.0.1:3106:3106"
+  postgrest_pg7:
+    container_name: postgrest_pg7
+    image: postgrest/postgrest
+    restart: always
+    environment:
+      PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg7
+      PGRST_DB_SCHEMA: public
+      PGRST_DB_ANON_ROLE: dbuser_app
+      PGRST_SERVER_PORT: 3107
+      PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
+      PGRST_DB_CHANNEL: pgrst
+      PGRST_DB_CHANNEL_ENABLED: "true"
+    ports:
+      - "127.0.0.1:3107:3107"
+  postgrest_pg8:
+    container_name: postgrest_pg8
+    image: postgrest/postgrest
+    restart: always
+    environment:
+      PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg8
+      PGRST_DB_SCHEMA: public
+      PGRST_DB_ANON_ROLE: dbuser_app
+      PGRST_SERVER_PORT: 3108
+      PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
+      PGRST_DB_CHANNEL: pgrst
+      PGRST_DB_CHANNEL_ENABLED: "true"
+    ports:
+      - "127.0.0.1:3108:3108"
+  postgrest_pg9:
+    container_name: postgrest_pg9
+    image: postgrest/postgrest
+    restart: always
+    environment:
+      PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg9
+      PGRST_DB_SCHEMA: public
+      PGRST_DB_ANON_ROLE: dbuser_app
+      PGRST_SERVER_PORT: 3109
+      PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
+      PGRST_DB_CHANNEL: pgrst
+      PGRST_DB_CHANNEL_ENABLED: "true"
+    ports:
+      - "127.0.0.1:3109:3109"
+  postgrest_pg10:
+    container_name: postgrest_pg10
+    image: postgrest/postgrest
+    restart: always
+    environment:
+      PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg10
+      PGRST_DB_SCHEMA: public
+      PGRST_DB_ANON_ROLE: dbuser_app
+      PGRST_SERVER_PORT: 3110
+      PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
+      PGRST_DB_CHANNEL: pgrst
+      PGRST_DB_CHANNEL_ENABLED: "true"
+    ports:
+      - "127.0.0.1:3110:3110"
+  postgrest_pg11:
+    container_name: postgrest_pg11
+    image: postgrest/postgrest
+    restart: always
+    environment:
+      PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg11
+      PGRST_DB_SCHEMA: public
+      PGRST_DB_ANON_ROLE: dbuser_app
+      PGRST_SERVER_PORT: 3111
+      PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
+      PGRST_DB_CHANNEL: pgrst
+      PGRST_DB_CHANNEL_ENABLED: "true"
+    ports:
+      - "127.0.0.1:3111:3111"
+  postgrest_pg12:
+    container_name: postgrest_pg12
+    image: postgrest/postgrest
+    restart: always
+    environment:
+      PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg12
+      PGRST_DB_SCHEMA: public
+      PGRST_DB_ANON_ROLE: dbuser_app
+      PGRST_SERVER_PORT: 3112
+      PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
+      PGRST_DB_CHANNEL: pgrst
+      PGRST_DB_CHANNEL_ENABLED: "true"
+    ports:
+      - "127.0.0.1:3112:3112"
+  postgrest_pg13:
+    container_name: postgrest_pg13
+    image: postgrest/postgrest
+    restart: always
+    environment:
+      PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg13
+      PGRST_DB_SCHEMA: public
+      PGRST_DB_ANON_ROLE: dbuser_app
+      PGRST_SERVER_PORT: 3113
+      PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
+      PGRST_DB_CHANNEL: pgrst
+      PGRST_DB_CHANNEL_ENABLED: "true"
+    ports:
+      - "127.0.0.1:3113:3113"
+  postgrest_pg14:
+    container_name: postgrest_pg14
+    image: postgrest/postgrest
+    restart: always
+    environment:
+      PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg14
+      PGRST_DB_SCHEMA: public
+      PGRST_DB_ANON_ROLE: dbuser_app
+      PGRST_SERVER_PORT: 3114
+      PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
+      PGRST_DB_CHANNEL: pgrst
+      PGRST_DB_CHANNEL_ENABLED: "true"
+    ports:
+      - "127.0.0.1:3114:3114"
+  postgrest_pg15:
+    container_name: postgrest_pg15
+    image: postgrest/postgrest
+    restart: always
+    environment:
+      PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg15
+      PGRST_DB_SCHEMA: public
+      PGRST_DB_ANON_ROLE: dbuser_app
+      PGRST_SERVER_PORT: 3115
+      PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
+      PGRST_DB_CHANNEL: pgrst
+      PGRST_DB_CHANNEL_ENABLED: "true"
+    ports:
+      - "127.0.0.1:3115:3115"
+  postgrest_pg16:
+    container_name: postgrest_pg16
+    image: postgrest/postgrest
+    restart: always
+    environment:
+      PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg16
+      PGRST_DB_SCHEMA: public
+      PGRST_DB_ANON_ROLE: dbuser_app
+      PGRST_SERVER_PORT: 3116
+      PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
+      PGRST_DB_CHANNEL: pgrst
+      PGRST_DB_CHANNEL_ENABLED: "true"
+    ports:
+      - "127.0.0.1:3116:3116"
+  postgrest_pg17:
+    container_name: postgrest_pg17
+    image: postgrest/postgrest
+    restart: always
+    environment:
+      PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg17
+      PGRST_DB_SCHEMA: public
+      PGRST_DB_ANON_ROLE: dbuser_app
+      PGRST_SERVER_PORT: 3117
+      PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
+      PGRST_DB_CHANNEL: pgrst
+      PGRST_DB_CHANNEL_ENABLED: "true"
+    ports:
+      - "127.0.0.1:3117:3117"
+  postgrest_pg18:
+    container_name: postgrest_pg18
+    image: postgrest/postgrest
+    restart: always
+    environment:
+      PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg18
+      PGRST_DB_SCHEMA: public
+      PGRST_DB_ANON_ROLE: dbuser_app
+      PGRST_SERVER_PORT: 3118
+      PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
+      PGRST_DB_CHANNEL: pgrst
+      PGRST_DB_CHANNEL_ENABLED: "true"
+    ports:
+      - "127.0.0.1:3118:3118"
+  postgrest_pg19:
+    container_name: postgrest_pg19
+    image: postgrest/postgrest
+    restart: always
+    environment:
+      PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg19
+      PGRST_DB_SCHEMA: public
+      PGRST_DB_ANON_ROLE: dbuser_app
+      PGRST_SERVER_PORT: 3119
+      PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
+      PGRST_DB_CHANNEL: pgrst
+      PGRST_DB_CHANNEL_ENABLED: "true"
+    ports:
+      - "127.0.0.1:3119:3119"
+  postgrest_pg20:
+    container_name: postgrest_pg20
+    image: postgrest/postgrest
+    restart: always
+    environment:
+      PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg20
+      PGRST_DB_SCHEMA: public
+      PGRST_DB_ANON_ROLE: dbuser_app
+      PGRST_SERVER_PORT: 3120
+      PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
+      PGRST_DB_CHANNEL: pgrst
+      PGRST_DB_CHANNEL_ENABLED: "true"
+    ports:
+      - "127.0.0.1:3120:3120"
+  postgrest_pg21:
+    container_name: postgrest_pg21
+    image: postgrest/postgrest
+    restart: always
+    environment:
+      PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg21
+      PGRST_DB_SCHEMA: public
+      PGRST_DB_ANON_ROLE: dbuser_app
+      PGRST_SERVER_PORT: 3121
+      PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
+      PGRST_DB_CHANNEL: pgrst
+      PGRST_DB_CHANNEL_ENABLED: "true"
+    ports:
+      - "127.0.0.1:3121:3121"
+  postgrest_pg22:
+    container_name: postgrest_pg22
+    image: postgrest/postgrest
+    restart: always
+    environment:
+      PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg22
+      PGRST_DB_SCHEMA: public
+      PGRST_DB_ANON_ROLE: dbuser_app
+      PGRST_SERVER_PORT: 3122
+      PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
+      PGRST_DB_CHANNEL: pgrst
+      PGRST_DB_CHANNEL_ENABLED: "true"
+    ports:
+      - "127.0.0.1:3122:3122"
+  postgrest_pg23:
+    container_name: postgrest_pg23
+    image: postgrest/postgrest
+    restart: always
+    environment:
+      PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg23
+      PGRST_DB_SCHEMA: public
+      PGRST_DB_ANON_ROLE: dbuser_app
+      PGRST_SERVER_PORT: 3123
+      PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
+      PGRST_DB_CHANNEL: pgrst
+      PGRST_DB_CHANNEL_ENABLED: "true"
+    ports:
+      - "127.0.0.1:3123:3123"
+  postgrest_pg24:
+    container_name: postgrest_pg24
+    image: postgrest/postgrest
+    restart: always
+    environment:
+      PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg24
+      PGRST_DB_SCHEMA: public
+      PGRST_DB_ANON_ROLE: dbuser_app
+      PGRST_SERVER_PORT: 3124
+      PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
+      PGRST_DB_CHANNEL: pgrst
+      PGRST_DB_CHANNEL_ENABLED: "true"
+    ports:
+      - "127.0.0.1:3124:3124"
+  postgrest_pg25:
+    container_name: postgrest_pg25
+    image: postgrest/postgrest
+    restart: always
+    environment:
+      PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg25
+      PGRST_DB_SCHEMA: public
+      PGRST_DB_ANON_ROLE: dbuser_app
+      PGRST_SERVER_PORT: 3125
+      PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
+      PGRST_DB_CHANNEL: pgrst
+      PGRST_DB_CHANNEL_ENABLED: "true"
+    ports:
+      - "127.0.0.1:3125:3125"
+  postgrest_pg26:
+    container_name: postgrest_pg26
+    image: postgrest/postgrest
+    restart: always
+    environment:
+      PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg26
+      PGRST_DB_SCHEMA: public
+      PGRST_DB_ANON_ROLE: dbuser_app
+      PGRST_SERVER_PORT: 3126
+      PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
+      PGRST_DB_CHANNEL: pgrst
+      PGRST_DB_CHANNEL_ENABLED: "true"
+    ports:
+      - "127.0.0.1:3126:3126"
+  postgrest_pg27:
+    container_name: postgrest_pg27
+    image: postgrest/postgrest
+    restart: always
+    environment:
+      PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg27
+      PGRST_DB_SCHEMA: public
+      PGRST_DB_ANON_ROLE: dbuser_app
+      PGRST_SERVER_PORT: 3127
+      PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
+      PGRST_DB_CHANNEL: pgrst
+      PGRST_DB_CHANNEL_ENABLED: "true"
+    ports:
+      - "127.0.0.1:3127:3127"
+  postgrest_pg28:
+    container_name: postgrest_pg28
+    image: postgrest/postgrest
+    restart: always
+    environment:
+      PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg28
+      PGRST_DB_SCHEMA: public
+      PGRST_DB_ANON_ROLE: dbuser_app
+      PGRST_SERVER_PORT: 3128
+      PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
+      PGRST_DB_CHANNEL: pgrst
+      PGRST_DB_CHANNEL_ENABLED: "true"
+    ports:
+      - "127.0.0.1:3128:3128"
+  postgrest_pg29:
+    container_name: postgrest_pg29
+    image: postgrest/postgrest
+    restart: always
+    environment:
+      PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg29
+      PGRST_DB_SCHEMA: public
+      PGRST_DB_ANON_ROLE: dbuser_app
+      PGRST_SERVER_PORT: 3129
+      PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
+      PGRST_DB_CHANNEL: pgrst
+      PGRST_DB_CHANNEL_ENABLED: "true"
+    ports:
+      - "127.0.0.1:3129:3129"
+  postgrest_pg30:
+    container_name: postgrest_pg30
+    image: postgrest/postgrest
+    restart: always
+    environment:
+      PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg30
+      PGRST_DB_SCHEMA: public
+      PGRST_DB_ANON_ROLE: dbuser_app
+      PGRST_SERVER_PORT: 3130
+      PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
+      PGRST_DB_CHANNEL: pgrst
+      PGRST_DB_CHANNEL_ENABLED: "true"
+    ports:
+      - "127.0.0.1:3130:3130"
+  postgrest_pg31:
+    container_name: postgrest_pg31
+    image: postgrest/postgrest
+    restart: always
+    environment:
+      PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg31
+      PGRST_DB_SCHEMA: public
+      PGRST_DB_ANON_ROLE: dbuser_app
+      PGRST_SERVER_PORT: 3131
+      PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
+      PGRST_DB_CHANNEL: pgrst
+      PGRST_DB_CHANNEL_ENABLED: "true"
+    ports:
+      - "127.0.0.1:3131:3131"
+  postgrest_pg32:
+    container_name: postgrest_pg32
+    image: postgrest/postgrest
+    restart: always
+    environment:
+      PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg32
+      PGRST_DB_SCHEMA: public
+      PGRST_DB_ANON_ROLE: dbuser_app
+      PGRST_SERVER_PORT: 3132
+      PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
+      PGRST_DB_CHANNEL: pgrst
+      PGRST_DB_CHANNEL_ENABLED: "true"
+    ports:
+      - "127.0.0.1:3132:3132"
+  postgrest_pg33:
+    container_name: postgrest_pg33
+    image: postgrest/postgrest
+    restart: always
+    environment:
+      PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg33
+      PGRST_DB_SCHEMA: public
+      PGRST_DB_ANON_ROLE: dbuser_app
+      PGRST_SERVER_PORT: 3133
+      PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
+      PGRST_DB_CHANNEL: pgrst
+      PGRST_DB_CHANNEL_ENABLED: "true"
+    ports:
+      - "127.0.0.1:3133:3133"
+  postgrest_pg34:
+    container_name: postgrest_pg34
+    image: postgrest/postgrest
+    restart: always
+    environment:
+      PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg34
+      PGRST_DB_SCHEMA: public
+      PGRST_DB_ANON_ROLE: dbuser_app
+      PGRST_SERVER_PORT: 3134
+      PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
+      PGRST_DB_CHANNEL: pgrst
+      PGRST_DB_CHANNEL_ENABLED: "true"
+    ports:
+      - "127.0.0.1:3134:3134"
+  postgrest_pg35:
+    container_name: postgrest_pg35
+    image: postgrest/postgrest
+    restart: always
+    environment:
+      PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg35
+      PGRST_DB_SCHEMA: public
+      PGRST_DB_ANON_ROLE: dbuser_app
+      PGRST_SERVER_PORT: 3135
+      PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
+      PGRST_DB_CHANNEL: pgrst
+      PGRST_DB_CHANNEL_ENABLED: "true"
+    ports:
+      - "127.0.0.1:3135:3135"
+  postgrest_pg36:
+    container_name: postgrest_pg36
+    image: postgrest/postgrest
+    restart: always
+    environment:
+      PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg36
+      PGRST_DB_SCHEMA: public
+      PGRST_DB_ANON_ROLE: dbuser_app
+      PGRST_SERVER_PORT: 3136
+      PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
+      PGRST_DB_CHANNEL: pgrst
+      PGRST_DB_CHANNEL_ENABLED: "true"
+    ports:
+      - "127.0.0.1:3136:3136"
+  postgrest_pg37:
+    container_name: postgrest_pg37
+    image: postgrest/postgrest
+    restart: always
+    environment:
+      PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg37
+      PGRST_DB_SCHEMA: public
+      PGRST_DB_ANON_ROLE: dbuser_app
+      PGRST_SERVER_PORT: 3137
+      PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
+      PGRST_DB_CHANNEL: pgrst
+      PGRST_DB_CHANNEL_ENABLED: "true"
+    ports:
+      - "127.0.0.1:3137:3137"
+  postgrest_pg38:
+    container_name: postgrest_pg38
+    image: postgrest/postgrest
+    restart: always
+    environment:
+      PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg38
+      PGRST_DB_SCHEMA: public
+      PGRST_DB_ANON_ROLE: dbuser_app
+      PGRST_SERVER_PORT: 3138
+      PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
+      PGRST_DB_CHANNEL: pgrst
+      PGRST_DB_CHANNEL_ENABLED: "true"
+    ports:
+      - "127.0.0.1:3138:3138"
+  postgrest_pg39:
+    container_name: postgrest_pg39
+    image: postgrest/postgrest
+    restart: always
+    environment:
+      PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg39
+      PGRST_DB_SCHEMA: public
+      PGRST_DB_ANON_ROLE: dbuser_app
+      PGRST_SERVER_PORT: 3139
+      PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
+      PGRST_DB_CHANNEL: pgrst
+      PGRST_DB_CHANNEL_ENABLED: "true"
+    ports:
+      - "127.0.0.1:3139:3139"
+  postgrest_pg40:
+    container_name: postgrest_pg40
+    image: postgrest/postgrest
+    restart: always
+    environment:
+      PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg40
+      PGRST_DB_SCHEMA: public
+      PGRST_DB_ANON_ROLE: dbuser_app
+      PGRST_SERVER_PORT: 3140
+      PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
+      PGRST_DB_CHANNEL: pgrst
+      PGRST_DB_CHANNEL_ENABLED: "true"
+    ports:
+      - "127.0.0.1:3140:3140"
+  postgrest_pg41:
+    container_name: postgrest_pg41
+    image: postgrest/postgrest
+    restart: always
+    environment:
+      PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg41
+      PGRST_DB_SCHEMA: public
+      PGRST_DB_ANON_ROLE: dbuser_app
+      PGRST_SERVER_PORT: 3141
+      PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
+      PGRST_DB_CHANNEL: pgrst
+      PGRST_DB_CHANNEL_ENABLED: "true"
+    ports:
+      - "127.0.0.1:3141:3141"
+  postgrest_pg42:
+    container_name: postgrest_pg42
+    image: postgrest/postgrest
+    restart: always
+    environment:
+      PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg42
+      PGRST_DB_SCHEMA: public
+      PGRST_DB_ANON_ROLE: dbuser_app
+      PGRST_SERVER_PORT: 3142
+      PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
+      PGRST_DB_CHANNEL: pgrst
+      PGRST_DB_CHANNEL_ENABLED: "true"
+    ports:
+      - "127.0.0.1:3142:3142"
+  postgrest_pg43:
+    container_name: postgrest_pg43
+    image: postgrest/postgrest
+    restart: always
+    environment:
+      PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg43
+      PGRST_DB_SCHEMA: public
+      PGRST_DB_ANON_ROLE: dbuser_app
+      PGRST_SERVER_PORT: 3143
+      PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
+      PGRST_DB_CHANNEL: pgrst
+      PGRST_DB_CHANNEL_ENABLED: "true"
+    ports:
+      - "127.0.0.1:3143:3143"
+  postgrest_pg44:
+    container_name: postgrest_pg44
+    image: postgrest/postgrest
+    restart: always
+    environment:
+      PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg44
+      PGRST_DB_SCHEMA: public
+      PGRST_DB_ANON_ROLE: dbuser_app
+      PGRST_SERVER_PORT: 3144
+      PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
+      PGRST_DB_CHANNEL: pgrst
+      PGRST_DB_CHANNEL_ENABLED: "true"
+    ports:
+      - "127.0.0.1:3144:3144"
+  postgrest_pg45:
+    container_name: postgrest_pg45
+    image: postgrest/postgrest
+    restart: always
+    environment:
+      PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg45
+      PGRST_DB_SCHEMA: public
+      PGRST_DB_ANON_ROLE: dbuser_app
+      PGRST_SERVER_PORT: 3145
+      PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
+      PGRST_DB_CHANNEL: pgrst
+      PGRST_DB_CHANNEL_ENABLED: "true"
+    ports:
+      - "127.0.0.1:3145:3145"
+  postgrest_pg46:
+    container_name: postgrest_pg46
+    image: postgrest/postgrest
+    restart: always
+    environment:
+      PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg46
+      PGRST_DB_SCHEMA: public
+      PGRST_DB_ANON_ROLE: dbuser_app
+      PGRST_SERVER_PORT: 3146
+      PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
+      PGRST_DB_CHANNEL: pgrst
+      PGRST_DB_CHANNEL_ENABLED: "true"
+    ports:
+      - "127.0.0.1:3146:3146"
+  postgrest_pg47:
+    container_name: postgrest_pg47
+    image: postgrest/postgrest
+    restart: always
+    environment:
+      PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg47
+      PGRST_DB_SCHEMA: public
+      PGRST_DB_ANON_ROLE: dbuser_app
+      PGRST_SERVER_PORT: 3147
+      PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
+      PGRST_DB_CHANNEL: pgrst
+      PGRST_DB_CHANNEL_ENABLED: "true"
+    ports:
+      - "127.0.0.1:3147:3147"
+  postgrest_pg48:
+    container_name: postgrest_pg48
+    image: postgrest/postgrest
+    restart: always
+    environment:
+      PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg48
+      PGRST_DB_SCHEMA: public
+      PGRST_DB_ANON_ROLE: dbuser_app
+      PGRST_SERVER_PORT: 3148
+      PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
+      PGRST_DB_CHANNEL: pgrst
+      PGRST_DB_CHANNEL_ENABLED: "true"
+    ports:
+      - "127.0.0.1:3148:3148"
+  postgrest_pg49:
+    container_name: postgrest_pg49
+    image: postgrest/postgrest
+    restart: always
+    environment:
+      PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg49
+      PGRST_DB_SCHEMA: public
+      PGRST_DB_ANON_ROLE: dbuser_app
+      PGRST_SERVER_PORT: 3149
+      PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
+      PGRST_DB_CHANNEL: pgrst
+      PGRST_DB_CHANNEL_ENABLED: "true"
+    ports:
+      - "127.0.0.1:3149:3149"
+  postgrest_pg50:
+    container_name: postgrest_pg50
+    image: postgrest/postgrest
+    restart: always
+    environment:
+      PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg50
+      PGRST_DB_SCHEMA: public
+      PGRST_DB_ANON_ROLE: dbuser_app
+      PGRST_SERVER_PORT: 3150
+      PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
+      PGRST_DB_CHANNEL: pgrst
+      PGRST_DB_CHANNEL_ENABLED: "true"
+    ports:
+      - "127.0.0.1:3150:3150"
+  postgrest_pg51:
+    container_name: postgrest_pg51
+    image: postgrest/postgrest
+    restart: always
+    environment:
+      PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg51
+      PGRST_DB_SCHEMA: public
+      PGRST_DB_ANON_ROLE: dbuser_app
+      PGRST_SERVER_PORT: 3151
+      PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
+      PGRST_DB_CHANNEL: pgrst
+      PGRST_DB_CHANNEL_ENABLED: "true"
+    ports:
+      - "127.0.0.1:3151:3151"
+  postgrest_pg52:
+    container_name: postgrest_pg52
+    image: postgrest/postgrest
+    restart: always
+    environment:
+      PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg52
+      PGRST_DB_SCHEMA: public
+      PGRST_DB_ANON_ROLE: dbuser_app
+      PGRST_SERVER_PORT: 3152
+      PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
+      PGRST_DB_CHANNEL: pgrst
+      PGRST_DB_CHANNEL_ENABLED: "true"
+    ports:
+      - "127.0.0.1:3152:3152"
+  postgrest_pg53:
+    container_name: postgrest_pg53
+    image: postgrest/postgrest
+    restart: always
+    environment:
+      PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg53
+      PGRST_DB_SCHEMA: public
+      PGRST_DB_ANON_ROLE: dbuser_app
+      PGRST_SERVER_PORT: 3153
+      PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
+      PGRST_DB_CHANNEL: pgrst
+      PGRST_DB_CHANNEL_ENABLED: "true"
+    ports:
+      - "127.0.0.1:3153:3153"
+  postgrest_pg54:
+    container_name: postgrest_pg54
+    image: postgrest/postgrest
+    restart: always
+    environment:
+      PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg54
+      PGRST_DB_SCHEMA: public
+      PGRST_DB_ANON_ROLE: dbuser_app
+      PGRST_SERVER_PORT: 3154
+      PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
+      PGRST_DB_CHANNEL: pgrst
+      PGRST_DB_CHANNEL_ENABLED: "true"
+    ports:
+      - "127.0.0.1:3154:3154"
+  postgrest_pg55:
+    container_name: postgrest_pg55
+    image: postgrest/postgrest
+    restart: always
+    environment:
+      PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg55
+      PGRST_DB_SCHEMA: public
+      PGRST_DB_ANON_ROLE: dbuser_app
+      PGRST_SERVER_PORT: 3155
+      PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
+      PGRST_DB_CHANNEL: pgrst
+      PGRST_DB_CHANNEL_ENABLED: "true"
+    ports:
+      - "127.0.0.1:3155:3155"
+  postgrest_pg56:
+    container_name: postgrest_pg56
+    image: postgrest/postgrest
+    restart: always
+    environment:
+      PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg56
+      PGRST_DB_SCHEMA: public
+      PGRST_DB_ANON_ROLE: dbuser_app
+      PGRST_SERVER_PORT: 3156
+      PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
+      PGRST_DB_CHANNEL: pgrst
+      PGRST_DB_CHANNEL_ENABLED: "true"
+    ports:
+      - "127.0.0.1:3156:3156"
+  postgrest_pg57:
+    container_name: postgrest_pg57
+    image: postgrest/postgrest
+    restart: always
+    environment:
+      PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg57
+      PGRST_DB_SCHEMA: public
+      PGRST_DB_ANON_ROLE: dbuser_app
+      PGRST_SERVER_PORT: 3157
+      PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
+      PGRST_DB_CHANNEL: pgrst
+      PGRST_DB_CHANNEL_ENABLED: "true"
+    ports:
+      - "127.0.0.1:3157:3157"
+  postgrest_pg58:
+    container_name: postgrest_pg58
+    image: postgrest/postgrest
+    restart: always
+    environment:
+      PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg58
+      PGRST_DB_SCHEMA: public
+      PGRST_DB_ANON_ROLE: dbuser_app
+      PGRST_SERVER_PORT: 3158
+      PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
+      PGRST_DB_CHANNEL: pgrst
+      PGRST_DB_CHANNEL_ENABLED: "true"
+    ports:
+      - "127.0.0.1:3158:3158"
+  postgrest_pg59:
+    container_name: postgrest_pg59
+    image: postgrest/postgrest
+    restart: always
+    environment:
+      PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg59
+      PGRST_DB_SCHEMA: public
+      PGRST_DB_ANON_ROLE: dbuser_app
+      PGRST_SERVER_PORT: 3159
+      PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
+      PGRST_DB_CHANNEL: pgrst
+      PGRST_DB_CHANNEL_ENABLED: "true"
+    ports:
+      - "127.0.0.1:3159:3159"
+  postgrest_pg60:
+    container_name: postgrest_pg60
+    image: postgrest/postgrest
+    restart: always
+    environment:
+      PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg60
+      PGRST_DB_SCHEMA: public
+      PGRST_DB_ANON_ROLE: dbuser_app
+      PGRST_SERVER_PORT: 3160
+      PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
+      PGRST_DB_CHANNEL: pgrst
+      PGRST_DB_CHANNEL_ENABLED: "true"
+    ports:
+      - "127.0.0.1:3160:3160"
+  postgrest_pg61:
+    container_name: postgrest_pg61
+    image: postgrest/postgrest
+    restart: always
+    environment:
+      PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg61
+      PGRST_DB_SCHEMA: public
+      PGRST_DB_ANON_ROLE: dbuser_app
+      PGRST_SERVER_PORT: 3161
+      PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
+      PGRST_DB_CHANNEL: pgrst
+      PGRST_DB_CHANNEL_ENABLED: "true"
+    ports:
+      - "127.0.0.1:3161:3161"
+  postgrest_pg62:
+    container_name: postgrest_pg62
+    image: postgrest/postgrest
+    restart: always
+    environment:
+      PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg62
+      PGRST_DB_SCHEMA: public
+      PGRST_DB_ANON_ROLE: dbuser_app
+      PGRST_SERVER_PORT: 3162
+      PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
+      PGRST_DB_CHANNEL: pgrst
+      PGRST_DB_CHANNEL_ENABLED: "true"
+    ports:
+      - "127.0.0.1:3162:3162"
+  postgrest_pg63:
+    container_name: postgrest_pg63
+    image: postgrest/postgrest
+    restart: always
+    environment:
+      PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg63
+      PGRST_DB_SCHEMA: public
+      PGRST_DB_ANON_ROLE: dbuser_app
+      PGRST_SERVER_PORT: 3163
+      PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
+      PGRST_DB_CHANNEL: pgrst
+      PGRST_DB_CHANNEL_ENABLED: "true"
+    ports:
+      - "127.0.0.1:3163:3163"
+  postgrest_pg64:
+    container_name: postgrest_pg64
+    image: postgrest/postgrest
+    restart: always
+    environment:
+      PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg64
+      PGRST_DB_SCHEMA: public
+      PGRST_DB_ANON_ROLE: dbuser_app
+      PGRST_SERVER_PORT: 3164
+      PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
+      PGRST_DB_CHANNEL: pgrst
+      PGRST_DB_CHANNEL_ENABLED: "true"
+    ports:
+      - "127.0.0.1:3164:3164"
+  postgrest_pg65:
+    container_name: postgrest_pg65
+    image: postgrest/postgrest
+    restart: always
+    environment:
+      PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg65
+      PGRST_DB_SCHEMA: public
+      PGRST_DB_ANON_ROLE: dbuser_app
+      PGRST_SERVER_PORT: 3165
+      PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
+      PGRST_DB_CHANNEL: pgrst
+      PGRST_DB_CHANNEL_ENABLED: "true"
+    ports:
+      - "127.0.0.1:3165:3165"
+  postgrest_pg66:
+    container_name: postgrest_pg66
+    image: postgrest/postgrest
+    restart: always
+    environment:
+      PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg66
+      PGRST_DB_SCHEMA: public
+      PGRST_DB_ANON_ROLE: dbuser_app
+      PGRST_SERVER_PORT: 3166
+      PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
+      PGRST_DB_CHANNEL: pgrst
+      PGRST_DB_CHANNEL_ENABLED: "true"
+    ports:
+      - "127.0.0.1:3166:3166"
+  postgrest_pg67:
+    container_name: postgrest_pg67
+    image: postgrest/postgrest
+    restart: always
+    environment:
+      PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg67
+      PGRST_DB_SCHEMA: public
+      PGRST_DB_ANON_ROLE: dbuser_app
+      PGRST_SERVER_PORT: 3167
+      PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
+      PGRST_DB_CHANNEL: pgrst
+      PGRST_DB_CHANNEL_ENABLED: "true"
+    ports:
+      - "127.0.0.1:3167:3167"
+  postgrest_pg68:
+    container_name: postgrest_pg68
+    image: postgrest/postgrest
+    restart: always
+    environment:
+      PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg68
+      PGRST_DB_SCHEMA: public
+      PGRST_DB_ANON_ROLE: dbuser_app
+      PGRST_SERVER_PORT: 3168
+      PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
+      PGRST_DB_CHANNEL: pgrst
+      PGRST_DB_CHANNEL_ENABLED: "true"
+    ports:
+      - "127.0.0.1:3168:3168"
+  postgrest_pg69:
+    container_name: postgrest_pg69
+    image: postgrest/postgrest
+    restart: always
+    environment:
+      PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg69
+      PGRST_DB_SCHEMA: public
+      PGRST_DB_ANON_ROLE: dbuser_app
+      PGRST_SERVER_PORT: 3169
+      PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
+      PGRST_DB_CHANNEL: pgrst
+      PGRST_DB_CHANNEL_ENABLED: "true"
+    ports:
+      - "127.0.0.1:3169:3169"
+  postgrest_pg70:
+    container_name: postgrest_pg70
+    image: postgrest/postgrest
+    restart: always
+    environment:
+      PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg70
+      PGRST_DB_SCHEMA: public
+      PGRST_DB_ANON_ROLE: dbuser_app
+      PGRST_SERVER_PORT: 3170
+      PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
+      PGRST_DB_CHANNEL: pgrst
+      PGRST_DB_CHANNEL_ENABLED: "true"
+    ports:
+      - "127.0.0.1:3170:3170"
+  postgrest_pg71:
+    container_name: postgrest_pg71
+    image: postgrest/postgrest
+    restart: always
+    environment:
+      PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg71
+      PGRST_DB_SCHEMA: public
+      PGRST_DB_ANON_ROLE: dbuser_app
+      PGRST_SERVER_PORT: 3171
+      PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
+      PGRST_DB_CHANNEL: pgrst
+      PGRST_DB_CHANNEL_ENABLED: "true"
+    ports:
+      - "127.0.0.1:3171:3171"
+  postgrest_pg72:
+    container_name: postgrest_pg72
+    image: postgrest/postgrest
+    restart: always
+    environment:
+      PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg72
+      PGRST_DB_SCHEMA: public
+      PGRST_DB_ANON_ROLE: dbuser_app
+      PGRST_SERVER_PORT: 3172
+      PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
+      PGRST_DB_CHANNEL: pgrst
+      PGRST_DB_CHANNEL_ENABLED: "true"
+    ports:
+      - "127.0.0.1:3172:3172"
+  postgrest_pg73:
+    container_name: postgrest_pg73
+    image: postgrest/postgrest
+    restart: always
+    environment:
+      PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg73
+      PGRST_DB_SCHEMA: public
+      PGRST_DB_ANON_ROLE: dbuser_app
+      PGRST_SERVER_PORT: 3173
+      PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
+      PGRST_DB_CHANNEL: pgrst
+      PGRST_DB_CHANNEL_ENABLED: "true"
+    ports:
+      - "127.0.0.1:3173:3173"
+  postgrest_pg74:
+    container_name: postgrest_pg74
+    image: postgrest/postgrest
+    restart: always
+    environment:
+      PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg74
+      PGRST_DB_SCHEMA: public
+      PGRST_DB_ANON_ROLE: dbuser_app
+      PGRST_SERVER_PORT: 3174
+      PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
+      PGRST_DB_CHANNEL: pgrst
+      PGRST_DB_CHANNEL_ENABLED: "true"
+    ports:
+      - "127.0.0.1:3174:3174"
+  postgrest_pg75:
+    container_name: postgrest_pg75
+    image: postgrest/postgrest
+    restart: always
+    environment:
+      PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg75
+      PGRST_DB_SCHEMA: public
+      PGRST_DB_ANON_ROLE: dbuser_app
+      PGRST_SERVER_PORT: 3175
+      PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
+      PGRST_DB_CHANNEL: pgrst
+      PGRST_DB_CHANNEL_ENABLED: "true"
+    ports:
+      - "127.0.0.1:3175:3175"
+  postgrest_pg76:
+    container_name: postgrest_pg76
+    image: postgrest/postgrest
+    restart: always
+    environment:
+      PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg76
+      PGRST_DB_SCHEMA: public
+      PGRST_DB_ANON_ROLE: dbuser_app
+      PGRST_SERVER_PORT: 3176
+      PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
+      PGRST_DB_CHANNEL: pgrst
+      PGRST_DB_CHANNEL_ENABLED: "true"
+    ports:
+      - "127.0.0.1:3176:3176"
+  postgrest_pg77:
+    container_name: postgrest_pg77
+    image: postgrest/postgrest
+    restart: always
+    environment:
+      PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg77
+      PGRST_DB_SCHEMA: public
+      PGRST_DB_ANON_ROLE: dbuser_app
+      PGRST_SERVER_PORT: 3177
+      PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
+      PGRST_DB_CHANNEL: pgrst
+      PGRST_DB_CHANNEL_ENABLED: "true"
+    ports:
+      - "127.0.0.1:3177:3177"
+  postgrest_pg78:
+    container_name: postgrest_pg78
+    image: postgrest/postgrest
+    restart: always
+    environment:
+      PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg78
+      PGRST_DB_SCHEMA: public
+      PGRST_DB_ANON_ROLE: dbuser_app
+      PGRST_SERVER_PORT: 3178
+      PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
+      PGRST_DB_CHANNEL: pgrst
+      PGRST_DB_CHANNEL_ENABLED: "true"
+    ports:
+      - "127.0.0.1:3178:3178"
+  postgrest_pg79:
+    container_name: postgrest_pg79
+    image: postgrest/postgrest
+    restart: always
+    environment:
+      PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg79
+      PGRST_DB_SCHEMA: public
+      PGRST_DB_ANON_ROLE: dbuser_app
+      PGRST_SERVER_PORT: 3179
+      PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
+      PGRST_DB_CHANNEL: pgrst
+      PGRST_DB_CHANNEL_ENABLED: "true"
+    ports:
+      - "127.0.0.1:3179:3179"
+  postgrest_pg80:
+    container_name: postgrest_pg80
+    image: postgrest/postgrest
+    restart: always
+    environment:
+      PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg80
+      PGRST_DB_SCHEMA: public
+      PGRST_DB_ANON_ROLE: dbuser_app
+      PGRST_SERVER_PORT: 3180
+      PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
+      PGRST_DB_CHANNEL: pgrst
+      PGRST_DB_CHANNEL_ENABLED: "true"
+    ports:
+      - "127.0.0.1:3180:3180"
+  postgrest_pg81:
+    container_name: postgrest_pg81
+    image: postgrest/postgrest
+    restart: always
+    environment:
+      PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg81
+      PGRST_DB_SCHEMA: public
+      PGRST_DB_ANON_ROLE: dbuser_app
+      PGRST_SERVER_PORT: 3181
+      PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
+      PGRST_DB_CHANNEL: pgrst
+      PGRST_DB_CHANNEL_ENABLED: "true"
+    ports:
+      - "127.0.0.1:3181:3181"
+  postgrest_pg82:
+    container_name: postgrest_pg82
+    image: postgrest/postgrest
+    restart: always
+    environment:
+      PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg82
+      PGRST_DB_SCHEMA: public
+      PGRST_DB_ANON_ROLE: dbuser_app
+      PGRST_SERVER_PORT: 3182
+      PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
+      PGRST_DB_CHANNEL: pgrst
+      PGRST_DB_CHANNEL_ENABLED: "true"
+    ports:
+      - "127.0.0.1:3182:3182"
+  postgrest_pg83:
+    container_name: postgrest_pg83
+    image: postgrest/postgrest
+    restart: always
+    environment:
+      PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg83
+      PGRST_DB_SCHEMA: public
+      PGRST_DB_ANON_ROLE: dbuser_app
+      PGRST_SERVER_PORT: 3183
+      PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
+      PGRST_DB_CHANNEL: pgrst
+      PGRST_DB_CHANNEL_ENABLED: "true"
+    ports:
+      - "127.0.0.1:3183:3183"
+  postgrest_pg84:
+    container_name: postgrest_pg84
+    image: postgrest/postgrest
+    restart: always
+    environment:
+      PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg84
+      PGRST_DB_SCHEMA: public
+      PGRST_DB_ANON_ROLE: dbuser_app
+      PGRST_SERVER_PORT: 3184
+      PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
+      PGRST_DB_CHANNEL: pgrst
+      PGRST_DB_CHANNEL_ENABLED: "true"
+    ports:
+      - "127.0.0.1:3184:3184"
+  postgrest_pg85:
+    container_name: postgrest_pg85
+    image: postgrest/postgrest
+    restart: always
+    environment:
+      PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg85
+      PGRST_DB_SCHEMA: public
+      PGRST_DB_ANON_ROLE: dbuser_app
+      PGRST_SERVER_PORT: 3185
+      PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
+      PGRST_DB_CHANNEL: pgrst
+      PGRST_DB_CHANNEL_ENABLED: "true"
+    ports:
+      - "127.0.0.1:3185:3185"
+  postgrest_pg86:
+    container_name: postgrest_pg86
+    image: postgrest/postgrest
+    restart: always
+    environment:
+      PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg86
+      PGRST_DB_SCHEMA: public
+      PGRST_DB_ANON_ROLE: dbuser_app
+      PGRST_SERVER_PORT: 3186
+      PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
+      PGRST_DB_CHANNEL: pgrst
+      PGRST_DB_CHANNEL_ENABLED: "true"
+    ports:
+      - "127.0.0.1:3186:3186"
+  postgrest_pg87:
+    container_name: postgrest_pg87
+    image: postgrest/postgrest
+    restart: always
+    environment:
+      PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg87
+      PGRST_DB_SCHEMA: public
+      PGRST_DB_ANON_ROLE: dbuser_app
+      PGRST_SERVER_PORT: 3187
+      PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
+      PGRST_DB_CHANNEL: pgrst
+      PGRST_DB_CHANNEL_ENABLED: "true"
+    ports:
+      - "127.0.0.1:3187:3187"
+  postgrest_pg88:
+    container_name: postgrest_pg88
+    image: postgrest/postgrest
+    restart: always
+    environment:
+      PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg88
+      PGRST_DB_SCHEMA: public
+      PGRST_DB_ANON_ROLE: dbuser_app
+      PGRST_SERVER_PORT: 3188
+      PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
+      PGRST_DB_CHANNEL: pgrst
+      PGRST_DB_CHANNEL_ENABLED: "true"
+    ports:
+      - "127.0.0.1:3188:3188"
+  postgrest_pg89:
+    container_name: postgrest_pg89
+    image: postgrest/postgrest
+    restart: always
+    environment:
+      PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg89
+      PGRST_DB_SCHEMA: public
+      PGRST_DB_ANON_ROLE: dbuser_app
+      PGRST_SERVER_PORT: 3189
+      PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
+      PGRST_DB_CHANNEL: pgrst
+      PGRST_DB_CHANNEL_ENABLED: "true"
+    ports:
+      - "127.0.0.1:3189:3189"
+  postgrest_pg90:
+    container_name: postgrest_pg90
+    image: postgrest/postgrest
+    restart: always
+    environment:
+      PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg90
+      PGRST_DB_SCHEMA: public
+      PGRST_DB_ANON_ROLE: dbuser_app
+      PGRST_SERVER_PORT: 3190
+      PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
+      PGRST_DB_CHANNEL: pgrst
+      PGRST_DB_CHANNEL_ENABLED: "true"
+    ports:
+      - "127.0.0.1:3190:3190"
+  postgrest_pg91:
+    container_name: postgrest_pg91
+    image: postgrest/postgrest
+    restart: always
+    environment:
+      PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg91
+      PGRST_DB_SCHEMA: public
+      PGRST_DB_ANON_ROLE: dbuser_app
+      PGRST_SERVER_PORT: 3191
+      PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
+      PGRST_DB_CHANNEL: pgrst
+      PGRST_DB_CHANNEL_ENABLED: "true"
+    ports:
+      - "127.0.0.1:3191:3191"
+  postgrest_pg92:
+    container_name: postgrest_pg92
+    image: postgrest/postgrest
+    restart: always
+    environment:
+      PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg92
+      PGRST_DB_SCHEMA: public
+      PGRST_DB_ANON_ROLE: dbuser_app
+      PGRST_SERVER_PORT: 3192
+      PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
+      PGRST_DB_CHANNEL: pgrst
+      PGRST_DB_CHANNEL_ENABLED: "true"
+    ports:
+      - "127.0.0.1:3192:3192"
+  postgrest_pg93:
+    container_name: postgrest_pg93
+    image: postgrest/postgrest
+    restart: always
+    environment:
+      PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg93
+      PGRST_DB_SCHEMA: public
+      PGRST_DB_ANON_ROLE: dbuser_app
+      PGRST_SERVER_PORT: 3193
+      PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
+      PGRST_DB_CHANNEL: pgrst
+      PGRST_DB_CHANNEL_ENABLED: "true"
+    ports:
+      - "127.0.0.1:3193:3193"
+  postgrest_pg94:
+    container_name: postgrest_pg94
+    image: postgrest/postgrest
+    restart: always
+    environment:
+      PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg94
+      PGRST_DB_SCHEMA: public
+      PGRST_DB_ANON_ROLE: dbuser_app
+      PGRST_SERVER_PORT: 3194
+      PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
+      PGRST_DB_CHANNEL: pgrst
+      PGRST_DB_CHANNEL_ENABLED: "true"
+    ports:
+      - "127.0.0.1:3194:3194"
+  postgrest_pg95:
+    container_name: postgrest_pg95
+    image: postgrest/postgrest
+    restart: always
+    environment:
+      PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg95
+      PGRST_DB_SCHEMA: public
+      PGRST_DB_ANON_ROLE: dbuser_app
+      PGRST_SERVER_PORT: 3195
+      PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
+      PGRST_DB_CHANNEL: pgrst
+      PGRST_DB_CHANNEL_ENABLED: "true"
+    ports:
+      - "127.0.0.1:3195:3195"
+  postgrest_pg96:
+    container_name: postgrest_pg96
+    image: postgrest/postgrest
+    restart: always
+    environment:
+      PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg96
+      PGRST_DB_SCHEMA: public
+      PGRST_DB_ANON_ROLE: dbuser_app
+      PGRST_SERVER_PORT: 3196
+      PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
+      PGRST_DB_CHANNEL: pgrst
+      PGRST_DB_CHANNEL_ENABLED: "true"
+    ports:
+      - "127.0.0.1:3196:3196"
+  postgrest_pg97:
+    container_name: postgrest_pg97
+    image: postgrest/postgrest
+    restart: always
+    environment:
+      PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg97
+      PGRST_DB_SCHEMA: public
+      PGRST_DB_ANON_ROLE: dbuser_app
+      PGRST_SERVER_PORT: 3197
+      PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
+      PGRST_DB_CHANNEL: pgrst
+      PGRST_DB_CHANNEL_ENABLED: "true"
+    ports:
+      - "127.0.0.1:3197:3197"
+  postgrest_pg98:
+    container_name: postgrest_pg98
+    image: postgrest/postgrest
+    restart: always
+    environment:
+      PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg98
+      PGRST_DB_SCHEMA: public
+      PGRST_DB_ANON_ROLE: dbuser_app
+      PGRST_SERVER_PORT: 3198
+      PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
+      PGRST_DB_CHANNEL: pgrst
+      PGRST_DB_CHANNEL_ENABLED: "true"
+    ports:
+      - "127.0.0.1:3198:3198"
+  postgrest_pg99:
+    container_name: postgrest_pg99
+    image: postgrest/postgrest
+    restart: always
+    environment:
+      PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg99
+      PGRST_DB_SCHEMA: public
+      PGRST_DB_ANON_ROLE: dbuser_app
+      PGRST_SERVER_PORT: 3199
+      PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
+      PGRST_DB_CHANNEL: pgrst
+      PGRST_DB_CHANNEL_ENABLED: "true"
+    ports:
+      - "127.0.0.1:3199:3199"
+  postgrest_pg100:
+    container_name: postgrest_pg100
+    image: postgrest/postgrest
+    restart: always
+    environment:
+      PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg100
+      PGRST_DB_SCHEMA: public
+      PGRST_DB_ANON_ROLE: dbuser_app
+      PGRST_SERVER_PORT: 3200
+      PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
+      PGRST_DB_CHANNEL: pgrst
+      PGRST_DB_CHANNEL_ENABLED: "true"
+    ports:
+      - "127.0.0.1:3200:3200"

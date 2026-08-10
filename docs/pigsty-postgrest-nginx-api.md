@@ -543,3 +543,113 @@ GET  /openapi.json  → 含 /notes, /tasks, /todos   ✅
 
 ### 16.7 已知小瑕疵（非阻塞）
 - OpenAPI 内 `host` 字段仍显示 `0.0.0.0:3001`（PostgREST 容器内地址），因 `PGRST_SERVER_PROXY_URI` 未完全覆盖。不影响平台使用（平台用我们给的 Base URL），仅 swagger ui 展示用。如需修正可在 `.env` 调整 `server-host` 相关参数。
+
+---
+
+## 17. 多库 API：pg1~pg100 全部暴露（每项目独立 database）
+
+> 采用 GPT 方案一的精简版（API Gateway + PostgREST Worker Pool）：
+> **每个项目库一个 PostgREST 实例**，由 Nginx 按路径 `/pgN/` 路由。
+> 对外是"一个域名按路径选库"，对 AI 平台而言就是"动态选数据库"。
+
+### 17.1 架构
+
+```
+AI 建站平台
+   │  HTTPS + apikey
+   ▼
+Nginx (pigstyapi.yunyingx.com)
+   │  /pg1/* → 127.0.0.1:3101 (PostgREST → pg1)
+   │  /pg2/* → 127.0.0.1:3102 (PostgREST → pg2)
+   │  ...
+   │  /pg100/* → 127.0.0.1:3200 (PostgREST → pg100)
+   │  / (root) → 127.0.0.1:3001 (PostgREST → appdb, 管理库)
+   ▼
+PostgREST 容器 ×100（docker-compose.multi.yml）
+   │  直连 217.69.2.217:5432（容器内源 IP 在 172.16.0.0/12，命中 pg_hba 放行规则）
+   ▼
+Pigsty pg-meta: pg1, pg2, ... pg100（独立 database）
+```
+
+### 17.2 端口规划
+- `appdb` PostgREST：**3001**（根路径 `/`，向后兼容）
+- `pgN` PostgREST：**3100 + N** → pg1=3101, pg2=3102, ... pg100=3200
+
+### 17.3 权限（方案 b：不动库归属，直接 GRANT）
+由 superuser(`postgres`) 在每个 `pgN` 库执行（已执行）：
+```sql
+GRANT CONNECT ON DATABASE pgN TO dbuser_app;
+GRANT ALL ON SCHEMA public TO dbuser_app;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES    TO dbuser_app;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO dbuser_app;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON FUNCTIONS TO dbuser_app;
+```
+库的 owner 保持原样（`postgres`/`dbuser_meta`），仅把读写权限赋给 `dbuser_app`。
+
+### 17.4 部署文件
+| 文件 | 作用 |
+|------|------|
+| `app/postgrest/docker-compose.multi.yml` | 100 个 PostgREST service（pg1..pg100），由 `gen_multi.sh` 生成 |
+| `app/postgrest/gen_multi.sh` | 生成脚本（改端口/凭据后重跑即可） |
+| `/etc/nginx/conf.d/pigstyapi-multi.conf` | 100 个 `/pgN/` location + 每库 OpenAPI 端点 |
+| `/etc/nginx/conf.d/pigstyapi.conf` | 仅保留 80→443 重定向（443 块已迁至 multi.conf） |
+| `/usr/local/bin/pigstyapi-openapi-sync-all.sh` | 批量同步 appdb + pg1..pg100 的 OpenAPI.json |
+
+启动：
+```bash
+cd app/postgrest && docker compose -f docker-compose.multi.yml up -d
+nginx -s reload
+```
+
+### 17.5 自助建表 RPC（每库已部署 `create_table`）
+所有库（含 pg1~pg100、appdb）均已部署：
+```sql
+CREATE OR REPLACE FUNCTION create_table(table_name text, columns text) RETURNS jsonb ...
+  -- 建表后 PERFORM pg_notify('pgrst', 'reload schema');  ← 注意是 reload schema 不是 reload config
+```
+调用（以 pg4 为例）：
+```http
+POST /pg4/rpc/create_table
+{ "table_name": "rpc_test", "columns": "id serial primary key, name text" }
+```
+**关键修正**：PostgREST 16 中 schema 刷新指令是 `NOTIFY pgrst, 'reload schema'`（旧文档写的 `reload config` 只重载配置、不刷新 schema cache，已纠正）。
+
+### 17.6 自动刷新验证
+- 在 pg2 建表 + `SELECT pg_notify('pgrst','reload schema')` → 2~3 秒后 `/pg2/新表` 立即可用 ✅
+- 经 RPC 建表自动触发 notify → 无需重启容器 ✅
+
+### 17.7 OpenAPI 自动同步
+脚本 `pigstyapi-openapi-sync-all.sh` 把每个库的 OpenAPI 落盘：
+- `appdb` → `/var/www/html/pigstyapi-openapi.json`（公开端点 `/openapi.json`）
+- `pgN`  → `/var/www/html/pigstyapi-pgN-openapi.json`（公开端点 `/pgN/openapi.json`）
+
+AI 平台可访问 `https://pigstyapi.yunyingx.com/pgN/openapi.json` 获取该库表结构。
+> 注：crontab 定时同步**未启用**（用户拒绝）。需手动运行
+> `/usr/local/bin/pigstyapi-openapi-sync-all.sh` 刷新，或建表后直接 `GET /pgN/` 拿实时 schema。
+
+### 17.8 AI 平台接入示例
+```text
+Base URL:  https://pigstyapi.yunyingx.com
+Header:    apikey: bc1608bff236f578f166f8d3515f16f2
+
+操作 pg1 库里的 users 表：
+  GET    /pg1/users
+  POST   /pg1/users        {"name":"alice"}
+  PATCH  /pg1/users?id=eq.1 {"name":"bob"}
+  DELETE /pg1/users?id=eq.1
+
+获取 pg1 库结构：
+  GET /pg1/openapi.json
+```
+路径前缀 `/pgN/` 即"选择哪个数据库"，其余 PostgREST 语法与官方完全一致。
+
+### 17.9 验证记录
+```text
+GET /pg1/                         → 返回 pg1 的 OpenAPI（路由到 3101）✅
+GET /pg2/ 无 apikey               → 401 ✅
+POST /pg4/rpc/create_table        → {"ok":true,"table":"rpc_test"} ✅
+GET  /pg4/rpc_test                → [{"id":1,"name":"via rpc"}] ✅（自动刷新生效）
+GET  /pg1/openapi.json            → 200，含表结构 ✅
+docker ps | grep postgrest_pg     → 100 个容器 running ✅
+```
+
