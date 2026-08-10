@@ -28,6 +28,7 @@ import time
 import shlex
 import signal
 import subprocess
+import yaml
 from urllib.parse import urlparse, parse_qs
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
@@ -457,6 +458,54 @@ def op_citus_add(params):
     return rc, out, err
 
 
+def op_bulk_db(params):
+    """批量创建 pg_databases 中所有 pg* 前缀的库（逐个 pgsql-db.yml）。"""
+    cls = (params.get("cluster") or "").strip()
+    if not cls:
+        return 1, "", "请提供集群名称"
+    # 从 pigsty.yml 提取该集群 pg_databases 中 pg* 前缀的库名
+    try:
+        with open(os.path.join(PIGSTY_HOME, "pigsty.yml")) as f:
+            cfg = yaml.safe_load(f)
+        dbs = _find_pg_databases(cfg)
+    except Exception as e:
+        return 1, "", "读取 pigsty.yml 失败: " + str(e)
+    targets = [d["name"] for d in dbs if d.get("name", "").lower().startswith("pg")]
+    if not targets:
+        return 0, "(没有 pg* 前缀的库需要创建)", ""
+    lines = ["将创建 {} 个 pg* 库: {}".format(len(targets), ", ".join(targets)), ""]
+    ok_cnt = 0
+    for name in targets:
+        rc, out, err = run(["ansible-playbook", "pgsql-db.yml", "-l", cls,
+                            "-e", "dbname=" + name], timeout=300)
+        if rc == 0:
+            ok_cnt += 1
+            lines.append("[OK]   {} 创建成功".format(name))
+        else:
+            # 已存在会报 changed=0 但 rc=0；rc!=0 视为失败
+            tail = (err or out).strip().splitlines()[-3:]
+            lines.append("[FAIL] {} rc={}\n{}".format(name, rc, "\n".join(tail)))
+    lines.insert(1, "完成: 成功 {} / 共 {}".format(ok_cnt, len(targets)))
+    return 0, "\n".join(lines), ""
+
+
+def _find_pg_databases(cfg):
+    """递归查找 pigsty.yml 中所有 pg_databases 列表。"""
+    found = []
+    def walk(o):
+        if isinstance(o, dict):
+            for k, v in o.items():
+                if k == "pg_databases" and isinstance(v, list):
+                    found.extend(v)
+                else:
+                    walk(v)
+        elif isinstance(o, list):
+            for i in o:
+                walk(i)
+    walk(cfg)
+    return found
+
+
 def api_ops():
     return [
         {"id": "node_add", "name": "新增节点 (node-add)", "fn": op_node_add,
@@ -497,6 +546,8 @@ def api_ops():
          "fields": [{"key": "cluster", "label": "集群名", "required": True}]},
         {"id": "pgmon_rm", "name": "移除远程监控目标 (pgmon-rm)", "fn": op_pgmon_rm,
          "fields": [{"key": "cluster", "label": "集群名", "required": True}]},
+        {"id": "bulk_db", "name": "批量创建所有 pg* 库 (pgsql-db ×N)", "fn": op_bulk_db,
+         "fields": [{"key": "cluster", "label": "集群名 (如 pg-meta)", "required": True}]},
     ]
 
 
@@ -609,12 +660,31 @@ class Handler(BaseHTTPRequestHandler):
             if not ok:
                 self._send_json({"rc": 403, "text": "", "error": why}, 403)
                 return
+            # 处理 "cd /root/pigsty && <cmd>"：切换工作目录并执行剩余命令
+            cwd = None
+            rest_cmd = command
+            CD_PREFIX = "cd /root/pigsty && "
+            if command.startswith(CD_PREFIX):
+                cwd = "/root/pigsty"
+                rest_cmd = command[len(CD_PREFIX):].strip()
             try:
-                argv = shlex.split(command)
+                argv = shlex.split(rest_cmd)
             except ValueError as e:
                 self._send_json({"rc": 400, "text": "", "error": "命令解析失败: " + str(e)}, 400)
                 return
-            rc, out, err = run(argv, timeout=1800)
+            import os
+            prev = os.getcwd() if cwd else None
+            if cwd:
+                try:
+                    os.chdir(cwd)
+                except OSError as e:
+                    self._send_json({"rc": 400, "text": "", "error": "无法切换目录: " + str(e)}, 400)
+                    return
+            try:
+                rc, out, err = run(argv, timeout=1800)
+            finally:
+                if prev:
+                    os.chdir(prev)
             log_op("shell", command, rc == 0, (err or "")[:200])
             self._send_json({"rc": rc, "text": out, "error": err})
             return
