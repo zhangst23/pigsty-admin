@@ -1,276 +1,25 @@
 ---
 #==============================================================#
-# File      :   meta.yml
-# Desc      :   Pigsty default 1-node online install config
-# Ctime     :   2020-05-22
-# Mtime     :   2026-07-10
-# Docs      :   https://pigsty.io/docs/conf/meta
+# File      :   supabase.yml
+# Desc      :   Pigsty configuration for self-hosting supabase
+# Ctime     :   2023-09-19
+# Mtime     :   2026-07-09
+# Docs      :   https://pigsty.io/docs/conf/supabase
 # License   :   Apache-2.0 @ https://pigsty.io/docs/about/license/
 # Copyright :   2018-2026  Ruohang Feng / Vonng (rh@vonng.com)
 #==============================================================#
 
-# This is the default 1-node configuration template, with:
-# INFRA, NODE, PGSQL, ETCD, MINIO, DOCKER, APP
-# with basic pg extensions: postgis, pgvector
-#
-# Work with PostgreSQL 14-18 on all supported platform
+# supabase is available on el8/el9/u22/u24/u26/d12 with pg15,16,17,18
+# tutorial: https://pigsty.io/docs/app/supabase
 # Usage:
-#   curl https://repo.pigsty.io/get | bash
-#   ./configure -g
-#   ./deploy.yml
+#   curl https://repo.pigsty.io/get | bash    # install pigsty
+#   ./configure -c supabase   # use this supabase conf template
+#   ./deploy.yml              # install pigsty & pgsql & minio
+#   ./docker.yml              # install docker & docker compose
+#   ./app.yml                 # launch supabase with docker compose
 
 all:
-
-  #==============================================================#
-  # Clusters, Nodes, and Modules
-  #==============================================================#
   children:
-
-    #----------------------------------------------#
-    # PGSQL : https://pigsty.io/docs/pgsql
-    #----------------------------------------------#
-    # this is an example single-node postgres cluster with pgvector installed, with one biz database & two biz users
-    pg-meta:
-      hosts:
-        217.69.2.217: { pg_seq: 1, pg_role: primary } # <---- primary instance with read-write capability
-        #x.xx.xx.xx: { pg_seq: 2, pg_role: replica } # <---- read only replica for read-only online traffic
-        #x.xx.xx.xy: { pg_seq: 3, pg_role: offline } # <---- offline instance of ETL & interactive queries
-      vars:
-        pg_cluster: pg-meta
-
-        # install, load, create pg extensions: https://pigsty.io/docs/pgsql/ext/
-        pg_extensions: [ postgis, pgvector ]
-
-        # define business users/roles : https://pigsty.io/docs/pgsql/config/user
-        pg_users:
-          - { name: dbuser_meta ,password: ra1Iay9o2nCYEyyXtO8mkWnW   ,pgbouncer: true ,roles: [dbrole_admin   ] ,comment: pigsty admin user }
-          - { name: dbuser_view ,password: VcyfqNvfMRQDa0hwHyeuLAX1 ,pgbouncer: true ,roles: [dbrole_readonly] ,comment: read-only viewer  }
-          - { name: dbuser_app ,password: F1LKkyTDilEyJTDE7hjTGBPu ,pgbouncer: true ,roles: [dbrole_readwrite] ,comment: ai platform app user }
-
-        # define business databases : https://pigsty.io/docs/pgsql/config/db
-        pg_databases:
-          - name: meta
-            baseline: cmdb.sql
-            comment: "pigsty meta database"
-            schemas: [pigsty]
-            # define extensions in database : https://pigsty.io/docs/pgsql/ext/create
-            extensions: [ postgis, vector ]
-
-          - name: appdb
-            owner: dbuser_app
-            comment: "ai platform backend database"
-
-          - name: pg1
-            comment: "created via admin webui"
-          - name: pg2
-            comment: "stress test db 2"
-          - name: pg3
-            comment: "stress test db 3"
-          - name: pg4
-            comment: "stress test db 4"
-          - name: pg5
-            comment: "stress test db 5"
-          - name: pg6
-            comment: "stress test db 6"
-          - name: pg7
-            comment: "stress test db 7"
-          - name: pg8
-            comment: "stress test db 8"
-          - name: pg9
-            comment: "stress test db 9"
-          - name: pg10
-            comment: "stress test db 10"
-          - name: pg11
-            comment: "stress test db 11"
-          - name: pg12
-            comment: "stress test db 12"
-          - name: pg13
-            comment: "stress test db 13"
-          - name: pg14
-            comment: "stress test db 14"
-          - name: pg15
-            comment: "stress test db 15"
-          - name: pg16
-            comment: "stress test db 16"
-          - name: pg17
-            comment: "stress test db 17"
-          - name: pg18
-            comment: "stress test db 18"
-          - name: pg19
-            comment: "stress test db 19"
-          - name: pg20
-            comment: "stress test db 20"
-          - name: pg21
-            comment: "stress test db 21"
-          - name: pg22
-            comment: "stress test db 22"
-          - name: pg23
-            comment: "stress test db 23"
-          - name: pg24
-            comment: "stress test db 24"
-          - name: pg25
-            comment: "stress test db 25"
-          - name: pg26
-            comment: "stress test db 26"
-          - name: pg27
-            comment: "stress test db 27"
-          - name: pg28
-            comment: "stress test db 28"
-          - name: pg29
-            comment: "stress test db 29"
-          - name: pg30
-            comment: "stress test db 30"
-          - name: pg31
-            comment: "stress test db 31"
-          - name: pg32
-            comment: "stress test db 32"
-          - name: pg33
-            comment: "stress test db 33"
-          - name: pg34
-            comment: "stress test db 34"
-          - name: pg35
-            comment: "stress test db 35"
-          - name: pg36
-            comment: "stress test db 36"
-          - name: pg37
-            comment: "stress test db 37"
-          - name: pg38
-            comment: "stress test db 38"
-          - name: pg39
-            comment: "stress test db 39"
-          - name: pg40
-            comment: "stress test db 40"
-          - name: pg41
-            comment: "stress test db 41"
-          - name: pg42
-            comment: "stress test db 42"
-          - name: pg43
-            comment: "stress test db 43"
-          - name: pg44
-            comment: "stress test db 44"
-          - name: pg45
-            comment: "stress test db 45"
-          - name: pg46
-            comment: "stress test db 46"
-          - name: pg47
-            comment: "stress test db 47"
-          - name: pg48
-            comment: "stress test db 48"
-          - name: pg49
-            comment: "stress test db 49"
-          - name: pg50
-            comment: "stress test db 50"
-          - name: pg51
-            comment: "stress test db 51"
-          - name: pg52
-            comment: "stress test db 52"
-          - name: pg53
-            comment: "stress test db 53"
-          - name: pg54
-            comment: "stress test db 54"
-          - name: pg55
-            comment: "stress test db 55"
-          - name: pg56
-            comment: "stress test db 56"
-          - name: pg57
-            comment: "stress test db 57"
-          - name: pg58
-            comment: "stress test db 58"
-          - name: pg59
-            comment: "stress test db 59"
-          - name: pg60
-            comment: "stress test db 60"
-          - name: pg61
-            comment: "stress test db 61"
-          - name: pg62
-            comment: "stress test db 62"
-          - name: pg63
-            comment: "stress test db 63"
-          - name: pg64
-            comment: "stress test db 64"
-          - name: pg65
-            comment: "stress test db 65"
-          - name: pg66
-            comment: "stress test db 66"
-          - name: pg67
-            comment: "stress test db 67"
-          - name: pg68
-            comment: "stress test db 68"
-          - name: pg69
-            comment: "stress test db 69"
-          - name: pg70
-            comment: "stress test db 70"
-          - name: pg71
-            comment: "stress test db 71"
-          - name: pg72
-            comment: "stress test db 72"
-          - name: pg73
-            comment: "stress test db 73"
-          - name: pg74
-            comment: "stress test db 74"
-          - name: pg75
-            comment: "stress test db 75"
-          - name: pg76
-            comment: "stress test db 76"
-          - name: pg77
-            comment: "stress test db 77"
-          - name: pg78
-            comment: "stress test db 78"
-          - name: pg79
-            comment: "stress test db 79"
-          - name: pg80
-            comment: "stress test db 80"
-          - name: pg81
-            comment: "stress test db 81"
-          - name: pg82
-            comment: "stress test db 82"
-          - name: pg83
-            comment: "stress test db 83"
-          - name: pg84
-            comment: "stress test db 84"
-          - name: pg85
-            comment: "stress test db 85"
-          - name: pg86
-            comment: "stress test db 86"
-          - name: pg87
-            comment: "stress test db 87"
-          - name: pg88
-            comment: "stress test db 88"
-          - name: pg89
-            comment: "stress test db 89"
-          - name: pg90
-            comment: "stress test db 90"
-          - name: pg91
-            comment: "stress test db 91"
-          - name: pg92
-            comment: "stress test db 92"
-          - name: pg93
-            comment: "stress test db 93"
-          - name: pg94
-            comment: "stress test db 94"
-          - name: pg95
-            comment: "stress test db 95"
-          - name: pg96
-            comment: "stress test db 96"
-          - name: pg97
-            comment: "stress test db 97"
-          - name: pg98
-            comment: "stress test db 98"
-          - name: pg99
-            comment: "stress test db 99"
-          - name: pg100
-            comment: "stress test db 100"
-
-            
-
-        pg_hba_rules:   # https://pigsty.io/docs/pgsql/config/hba
-          - { user: all ,db: all ,addr: intra ,auth: pwd ,title: 'everyone intranet access with password' ,order: 800 }
-        pg_crontab:     # https://pigsty.io/docs/pgsql/admin/crontab
-          - '00 01 * * * /pg/bin/pg-backup full'
-
-        # define (OPTIONAL) L2 VIP that bind to primary
-        #pg_vip_enabled: true
-        #pg_vip_address: 10.10.10.2/24
 
 
     #----------------------------------------------#
@@ -280,8 +29,7 @@ all:
       hosts:
         217.69.2.217: { infra_seq: 1 }
       vars:
-        repo_enabled: false   # disable in 1-node mode :  https://pigsty.io/docs/infra/admin/repo
-        #repo_extra_packages: [ pg18-main ,pg18-time ,pg18-gis ,pg18-rag ,pg18-fts ,pg18-olap ,pg18-feat ,pg18-lang ,pg18-type ,pg18-util ,pg18-func ,pg18-admin ,pg18-stat ,pg18-sec ,pg18-fdw ,pg18-sim ,pg18-etl]
+        repo_enabled: false    # disable local repo
 
     #----------------------------------------------#
     # ETCD : https://pigsty.io/docs/etcd
@@ -291,37 +39,166 @@ all:
         217.69.2.217: { etcd_seq: 1 }
       vars:
         etcd_cluster: etcd
-        etcd_safeguard: false             # prevent purging running etcd instance?
+        etcd_safeguard: false  # enable to prevent purging running etcd instance
 
     #----------------------------------------------#
     # MINIO : https://pigsty.io/docs/minio
     #----------------------------------------------#
-    #minio:
-    #  hosts:
-    #    217.69.2.217: { minio_seq: 1 }
-    #  vars:
-    #    minio_cluster: minio
-    #    minio_users:                      # list of minio user to be created
-    #      - { access_key: pgbackrest  ,secret_key: ZDYZDxj3Fw4QxF5I2nzIbnJt ,policy: pgsql }
-    #      - { access_key: s3user_meta ,secret_key: 48Y4argkWwwPWjsCSiTJHPSt   ,policy: meta  }
-    #      - { access_key: s3user_data ,secret_key: MQP2zxC9j7y0AFqGyONaZQtb   ,policy: data  }
+    minio:
+      hosts:
+        217.69.2.217: { minio_seq: 1 }
+      vars:
+        minio_cluster: minio
+        minio_users:                      # list of minio user to be created
+          - { access_key: pgbackrest  ,secret_key: S3User.Backup ,policy: pgsql }
+          - { access_key: s3user_meta ,secret_key: S3User.Meta   ,policy: meta  }
+          - { access_key: s3user_data ,secret_key: S3User.Data   ,policy: data  }
 
     #----------------------------------------------#
-    # DOCKER : https://pigsty.io/docs/docker
-    # APP    : https://pigsty.io/docs/app
+    # PostgreSQL cluster for Supabase self-hosting
     #----------------------------------------------#
-    # launch example pgadmin app with: ./app.yml (http://217.69.2.217:8885 admin@pigsty.cc / pigsty)
-    app:
-      hosts: { 217.69.2.217: {} }
+    pg-meta:
+      hosts:
+        217.69.2.217: { pg_seq: 1, pg_role: primary }
       vars:
-        docker_enabled: true                # enabled docker with ./docker.yml
+        pg_cluster: pg-meta
+        pg_users:
+          # supabase roles: anon, authenticated, dashboard_user
+          - { name: anon           ,login: false }
+          - { name: authenticated  ,login: false }
+          - { name: dashboard_user ,login: false ,replication: true ,createdb: true ,createrole: true }
+          - { name: service_role   ,login: false ,bypassrls: true }
+          # supabase users: please use the same password
+          - { name: supabase_admin             ,password: 'DBUser.Supa' ,pgbouncer: true ,inherit: true   ,roles: [ dbrole_admin ] ,superuser: true ,replication: true ,createdb: true ,createrole: true ,bypassrls: true }
+          - { name: authenticator              ,password: 'DBUser.Supa' ,pgbouncer: true ,inherit: false  ,roles: [ dbrole_admin, authenticated ,anon ,service_role ] }
+          - { name: supabase_auth_admin        ,password: 'DBUser.Supa' ,pgbouncer: true ,inherit: false  ,roles: [ dbrole_admin ] ,createrole: true }
+          - { name: supabase_storage_admin     ,password: 'DBUser.Supa' ,pgbouncer: true ,inherit: false  ,roles: [ dbrole_admin, authenticated ,anon ,service_role ] ,createrole: true }
+          - { name: supabase_functions_admin   ,password: 'DBUser.Supa' ,pgbouncer: true ,inherit: false  ,roles: [ dbrole_admin ] ,createrole: true }
+          - { name: supabase_replication_admin ,password: 'DBUser.Supa' ,replication: true ,roles: [ dbrole_admin ]}
+          - { name: supabase_etl_admin         ,password: 'DBUser.Supa' ,replication: true ,roles: [ pg_read_all_data, dbrole_readonly ]}
+          - { name: supabase_read_only_user    ,password: 'DBUser.Supa' ,bypassrls: true ,roles:   [ pg_read_all_data, dbrole_readonly ]}
+        pg_databases:
+          - name: postgres
+            baseline: supabase.sql
+            owner: supabase_admin
+            comment: supabase postgres database
+            schemas: [ extensions ,auth ,realtime ,storage ,graphql_public ,supabase_functions ,_realtime ]
+            extensions:
+              - { name: pgcrypto         ,schema: extensions } # cryptographic functions
+              - { name: pg_net           ,schema: extensions } # async HTTP
+              - { name: pgjwt            ,schema: extensions } # json web token API for postgres
+              - { name: uuid-ossp        ,schema: extensions } # generate universally unique identifiers (UUIDs)
+              - { name: pgsodium         ,schema: extensions } # pgsodium is a modern cryptography library for Postgres.
+              - { name: supabase_vault   ,schema: extensions } # Supabase Vault Extension
+              - { name: pg_jsonschema    ,schema: extensions } # pg_jsonschema: Validate json schema
+              - { name: wrappers         ,schema: extensions } # wrappers: FDW collections
+              - { name: http             ,schema: extensions } # http: allows web page retrieval inside the database.
+              - { name: pg_cron          ,schema: extensions } # pg_cron: Job scheduler for PostgreSQL
+              - { name: timescaledb      ,schema: extensions } # timescaledb: Enables scalable inserts and complex queries for time-series data
+              - { name: pg_tle           ,schema: extensions } # pg_tle: Trusted Language Extensions for PostgreSQL
+              - { name: vector           ,schema: extensions } # pgvector: the vector similarity search
+              - { name: pgmq             ,schema: extensions } # pgmq: A lightweight message queue like AWS SQS and RSMQ
+          - name: _supabase
+            owner: supabase_admin
+            comment: supabase internal analytics database
+            schemas: [ _analytics ]
+            extensions:
+              - { name: pgcrypto         ,schema: extensions } # cryptographic functions
+        # supabase required extensions
+        pg_libs: 'timescaledb, pgsodium, plpgsql, plpgsql_check, pg_cron, pg_net, pg_stat_statements, auto_explain, pg_wait_sampling, pg_tle, plan_filter'
+        pg_extensions: [ pg18-main ,pg18-time ,pg18-gis ,pg18-rag ,pg18-fts ,pg18-olap ,pg18-feat ,pg18-lang ,pg18-type ,pg18-util ,pg18-func ,pg18-admin ,pg18-stat ,pg18-sec ,pg18-fdw ,pg18-sim ,pg18-etl]
+        pg_parameters: { cron.database_name: postgres }
+        pg_hba_rules: # supabase hba rules, require access from docker network
+          - { user: all ,db: postgres  ,addr: intra         ,auth: pwd ,title: 'allow supabase access from intranet'    ,order: 50 }
+          - { user: all ,db: postgres  ,addr: 172.17.0.0/16 ,auth: pwd ,title: 'allow access from local docker network' ,order: 50 }
+          - { user: all ,db: _supabase ,addr: intra         ,auth: pwd ,title: 'allow supabase internal access from intranet'    ,order: 50 }
+          - { user: all ,db: _supabase ,addr: 172.17.0.0/16 ,auth: pwd ,title: 'allow internal access from local docker network' ,order: 50 }
+        pg_crontab:
+          - '00 01 * * * /pg/bin/pg-backup full'  # make a full backup every 1am
+          - '*  *  * * * /pg/bin/supa-kick'       # kick supabase _analytics lag per minute: https://github.com/pgsty/pigsty/issues/581
+
+    #----------------------------------------------#
+    # Supabase
+    #----------------------------------------------#
+    # ./docker.yml
+    # ./app.yml
+
+    # the supabase stateless containers (default username & password: supabase/pigsty)
+    supabase:
+      hosts:
+        217.69.2.217: {}
+      vars:
+        docker_enabled: true                              # enable docker on this group
         #docker_registry_mirrors: ["https://docker.1panel.live","https://docker.1ms.run","https://docker.xuanyuan.me","https://registry-1.docker.io"]
-        app: pgadmin                        # specify the default app name to be installed (in the apps)
-        apps:                               # define all applications, appname: definition
-          pgadmin:                          # pgadmin app definition (app/pgadmin -> /opt/pgadmin)
-            conf:                           # override /opt/pgadmin/.env
-              PGADMIN_DEFAULT_EMAIL: admin@pigsty.cc
-              PGADMIN_DEFAULT_PASSWORD: pigsty
+        app: supabase                                     # specify app name (supa) to be installed (in the apps)
+        apps:                                             # define all applications
+          supabase:                                       # the definition of supabase app
+            conf:                                         # override /opt/supabase/.env
+
+              # IMPORTANT: CHANGE JWT_SECRET AND REGENERATE CREDENTIAL ACCORDING!!!!!!!!!!!
+              # https://supabase.com/docs/guides/self-hosting/docker#securing-your-services
+              JWT_SECRET: your-super-secret-jwt-token-with-at-least-32-characters-long
+              ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyAgCiAgICAicm9sZSI6ICJhbm9uIiwKICAgICJpc3MiOiAic3VwYWJhc2UtZGVtbyIsCiAgICAiaWF0IjogMTY0MTc2OTIwMCwKICAgICJleHAiOiAxNzk5NTM1NjAwCn0.dc_X5iR_VP_qT0zsiyj_I_OZ2T9FtRU2BBNWN8Bu4GE
+              SERVICE_ROLE_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyAgCiAgICAicm9sZSI6ICJzZXJ2aWNlX3JvbGUiLAogICAgImlzcyI6ICJzdXBhYmFzZS1kZW1vIiwKICAgICJpYXQiOiAxNjQxNzY5MjAwLAogICAgImV4cCI6IDE3OTk1MzU2MDAKfQ.DaYlNEoUrrEn2Ig7tqibS-PHK5vgusbcbo7X36XVt4Q
+              SUPABASE_PUBLISHABLE_KEY: ""
+              SUPABASE_SECRET_KEY: ""
+              JWT_KEYS: ""
+              JWT_JWKS: ""
+              ANON_KEY_ASYMMETRIC: ""
+              SERVICE_ROLE_KEY_ASYMMETRIC: ""
+              PG_META_CRYPTO_KEY: your-encryption-key-32-chars-min
+              SECRET_KEY_BASE: UpNVntn3cDxHJpq99YMc1T1AQgQpc8kfYTuRgBiYa15BLrx8etQoXz3gZv1/u2oq
+              REALTIME_DB_ENC_KEY: supabaserealtime
+
+              DASHBOARD_USERNAME: supabase
+              DASHBOARD_PASSWORD: pigsty
+
+              # 32~64 random characters string for logflare
+              LOGFLARE_PUBLIC_ACCESS_TOKEN: 1234567890abcdef1234567890abcdef
+              LOGFLARE_PRIVATE_ACCESS_TOKEN: fedcba0987654321fedcba0987654321
+              LOGFLARE_DB: _supabase
+              LOGFLARE_SCHEMA: _analytics
+
+              # postgres connection string (use the correct ip and port)
+              POSTGRES_HOST: 217.69.2.217      # point to the local postgres node
+              POSTGRES_PORT: 5436             # access via the 'default' service, which always route to the primary postgres
+              POSTGRES_DB: postgres           # the supabase underlying database
+              POSTGRES_PASSWORD: DBUser.Supa  # password for supabase_admin and multiple supabase users
+
+              # expose supabase via domain name
+              SITE_URL: https://supa.pigsty                 # <------- Change This to your external site URL
+              API_EXTERNAL_URL: https://supa.pigsty/auth/v1 # <------- Auth service external URL, keep /auth/v1 suffix
+              SUPABASE_PUBLIC_URL: https://supa.pigsty      # <------- DO NOT FORGET TO PUT IT IN infra_portal!
+
+              # if using s3/minio as file storage
+              S3_BUCKET: data
+              GLOBAL_S3_BUCKET: data
+              S3_ENDPOINT: https://sss.pigsty:9000
+              S3_ACCESS_KEY: s3user_data
+              S3_SECRET_KEY: S3User.Data
+              S3_FORCE_PATH_STYLE: true
+              S3_PROTOCOL: https
+              S3_REGION: stub
+              REGION: stub
+              STORAGE_TENANT_ID: stub
+              S3_PROTOCOL_ACCESS_KEY_ID: s3user_data
+              S3_PROTOCOL_ACCESS_KEY_SECRET: S3User.Data
+              MINIO_DOMAIN_IP: 217.69.2.217  # sss.pigsty domain name will resolve to this ip statically
+              PGRST_DB_SCHEMAS: public,graphql_public
+              PGRST_DB_MAX_ROWS: 1000
+              PGRST_DB_EXTRA_SEARCH_PATH: public
+              IMGPROXY_AUTO_WEBP: true
+              FUNCTIONS_VERIFY_JWT: false
+              DOCKER_SOCKET_LOCATION: /var/run/docker.sock
+
+              # if using SMTP (optional)
+              #SMTP_ADMIN_EMAIL: admin@example.com
+              #SMTP_HOST: supabase-mail
+              #SMTP_PORT: 2500
+              #SMTP_USER: fake_mail_user
+              #SMTP_PASS: fake_mail_password
+              #SMTP_SENDER_NAME: fake_sender
+              #ENABLE_ANONYMOUS_USERS: false
 
 
   #==============================================================#
@@ -332,101 +209,127 @@ all:
     #----------------------------------------------#
     # INFRA : https://pigsty.io/docs/infra
     #----------------------------------------------#
-    version: v4.4.0                   # pigsty version string
-    admin_ip: 217.69.2.217             # admin node ip address
-    region: default                   # upstream mirror region: default|china|europe
-    proxy_env:                        # global proxy env when downloading packages
+    version: v4.4.0                       # pigsty version string
+    admin_ip: 217.69.2.217                 # admin node ip address
+    region: default                       # upstream mirror region: default|china|europe
+    proxy_env:                            # global proxy env when downloading packages
       no_proxy: "localhost,127.0.0.1,10.0.0.0/8,192.168.0.0/16,*.pigsty,*.aliyun.com,mirrors.*,*.myqcloud.com,*.tsinghua.edu.cn"
       # http_proxy:  # set your proxy here: e.g http://user:pass@proxy.xxx.com
       # https_proxy: # set your proxy here: e.g http://user:pass@proxy.xxx.com
       # all_proxy:   # set your proxy here: e.g http://user:pass@proxy.xxx.com
-    infra_portal:                     # infra services exposed via portal
-      home : { domain: i.pigsty }     # default domain name
-      pgadmin : { domain: adm.pigsty ,endpoint: "${admin_ip}:8885" }
-      #minio  : { domain: m.pigsty ,endpoint: "${admin_ip}:9001" ,scheme: https ,websocket: true }
+    certbot_sign: false                   # enable certbot to sign https certificate for infra portal
+    certbot_email: your@email.com         # replace your email address to receive expiration notice
+    infra_portal:                         # infra services exposed via portal
+      home      : { domain: i.pigsty }    # default domain name
+      pgadmin   : { domain: adm.pigsty ,endpoint: "${admin_ip}:8885" }
+      bytebase  : { domain: ddl.pigsty ,endpoint: "${admin_ip}:8887" }
+      #minio     : { domain: m.pigsty   ,endpoint: "${admin_ip}:9001" ,scheme: https ,websocket: true }
+
+      # Nginx / Domain / HTTPS : https://pigsty.io/docs/infra/admin/portal
+      supa :                              # nginx server config for supabase
+        domain: supa.pigsty               # REPLACE IT WITH YOUR OWN DOMAIN!
+        endpoint: "217.69.2.217:8000"      # supabase service endpoint: IP:PORT
+        websocket: true                   # add websocket support
+        certbot: supa.pigsty              # certbot cert name, apply with `make cert`
 
     #----------------------------------------------#
     # NODE : https://pigsty.io/docs/node/param
     #----------------------------------------------#
     nodename_overwrite: false             # do not overwrite node hostname on single node mode
     node_tune: oltp                       # node tuning specs: oltp,olap,tiny,crit
-    node_etc_hosts: ['${admin_ip} i.pigsty sss.pigsty']
-    node_repo_modules: 'node,infra,pgsql' # add these repos directly to the singleton node
-    #node_repo_modules: local             # use this if you want to build & user local repo
+    node_etc_hosts:                       # add static domains to all nodes /etc/hosts
+      - 217.69.2.217 i.pigsty sss.pigsty supa.pigsty
+    node_repo_modules: node,pgsql,infra   # use pre-made local repo rather than install from upstream
     node_repo_remove: true                # remove existing node repo for node managed by pigsty
-    #node_packages: [openssh-server]      # packages to be installed current nodes with the latest version
-    node_firewall_public_port: [22, 80, 443]          # 5432 closed to public; AI platform uses HTTPS API on 443
+    #node_packages: [openssh-server]      # packages to be installed current nodes with latest version
+    #node_timezone: Asia/Hong_Kong        # overwrite node timezone
 
     #----------------------------------------------#
     # PGSQL : https://pigsty.io/docs/pgsql/param
     #----------------------------------------------#
-    pg_version: 18                      # default postgres version
+    pg_version: 18                        # default postgres version
     pg_locale: C.UTF-8                  # overwrite default C local
     pg_lc_collate: C.UTF-8              # overwrite default C lc_collate
     pg_lc_ctype: C.UTF-8                # overwrite default C lc_ctype
 
-    pg_conf: oltp.yml                   # pgsql tuning specs: {oltp,olap,tiny,crit}.yml
-    pg_safeguard: false                 # prevent purging running postgres instance?
-    pg_packages: [ pgsql-main, pgsql-common ]  # pg kernel and common utils
-    #pg_extensions: [ pg18-time ,pg18-gis ,pg18-rag ,pg18-fts ,pg18-olap ,pg18-feat ,pg18-lang ,pg18-type ,pg18-util ,pg18-func ,pg18-admin ,pg18-stat ,pg18-sec ,pg18-fdw ,pg18-sim ,pg18-etl]
+    pg_conf: oltp.yml                     # pgsql tuning specs: {oltp,olap,tiny,crit}.yml
+    pg_safeguard: false                   # prevent purging running postgres instance?
+    pg_default_schemas: [ monitor, extensions ] # add new schema: extensions
+    pg_default_extensions:                # default extensions to be created
+      - { name: pg_stat_statements ,schema: monitor     }
+      - { name: pgstattuple        ,schema: monitor     }
+      - { name: pg_buffercache     ,schema: monitor     }
+      - { name: pageinspect        ,schema: monitor     }
+      - { name: pg_prewarm         ,schema: monitor     }
+      - { name: pg_visibility      ,schema: monitor     }
+      - { name: pg_freespacemap    ,schema: monitor     }
+      - { name: pg_wait_sampling   ,schema: monitor     }
+      # move default extensions to `extensions` schema for supabase
+      - { name: postgres_fdw       ,schema: extensions  }
+      - { name: file_fdw           ,schema: extensions  }
+      - { name: btree_gist         ,schema: extensions  }
+      - { name: btree_gin          ,schema: extensions  }
+      - { name: pg_trgm            ,schema: extensions  }
+      - { name: intagg             ,schema: extensions  }
+      - { name: intarray           ,schema: extensions  }
+      - { name: pg_repack          ,schema: extensions  }
 
     #----------------------------------------------#
     # BACKUP : https://pigsty.io/docs/pgsql/backup
     #----------------------------------------------#
-    # if you want to use minio as backup repo instead of 'local' fs, uncomment this, and configure `pgbackrest_repo`
-    # you can also use external object storage as backup repo
-    #pgbackrest_method: minio          # if you want to use minio as backup repo instead of 'local' fs, uncomment this
-    #pgbackrest_repo:                  # pgbackrest repo: https://pgbackrest.org/configuration.html#section-repository
-    #  local:                          # default pgbackrest repo with local posix fs
-    #    path: /pg/backup              # local backup directory, `/pg/backup` by default
-    #    retention_full_type: count    # retention full backups by count
-    #    retention_full: 2             # keep 2, at most 3 full backup when using local fs repo
-    #  minio:                          # optional minio repo for pgbackrest
-    #    type: s3                      # minio is s3-compatible, so s3 is used
-    #    s3_endpoint: sss.pigsty       # minio endpoint domain name, `sss.pigsty` by default
-    #    s3_region: us-east-1          # minio region, us-east-1 by default, useless for minio
-    #    s3_bucket: pgsql              # minio bucket name, `pgsql` by default
-    #    s3_key: pgbackrest            # minio user access key for pgbackrest
-    #    s3_key_secret: ZDYZDxj3Fw4QxF5I2nzIbnJt  # minio user secret key for pgbackrest
-    #    s3_uri_style: path            # use path style uri for minio rather than host style
-    #    path: /pgbackrest             # minio backup path, default is `/pgbackrest`
-    #    storage_port: 9000            # minio port, 9000 by default
-    #    storage_ca_file: /etc/pki/ca.crt  # minio ca file path, `/etc/pki/ca.crt` by default
-    #    block: y                      # Enable block incremental backup
-    #    bundle: y                     # bundle small files into a single file
-    #    bundle_limit: 20MiB           # Limit for file bundles, 20MiB for object storage
-    #    bundle_size: 128MiB           # Target size for file bundles, 128MiB for object storage
-    #    cipher_type: aes-256-cbc      # enable AES encryption for remote backup repo
-    #    cipher_pass: pgBackRest       # AES encryption password, default is 'pgBackRest'
-    #    retention_full_type: time     # retention full backup by time on minio repo
-    #    retention_full: 14            # keep full backup for last 14 days
-    #  s3: # aliyun oss (s3 compatible) object storage service
-    #    type: s3                      # oss is s3-compatible
-    #    s3_endpoint: oss-cn-beijing-internal.aliyuncs.com
-    #    s3_region: oss-cn-beijing
-    #    s3_bucket: <your_bucket_name>
-    #    s3_key: <your_access_key>
-    #    s3_key_secret: <your_secret_key>
-    #    s3_uri_style: host
-    #    path: /pgbackrest
-    #    bundle: y                     # bundle small files into a single file
-    #    bundle_limit: 20MiB           # Limit for file bundles, 20MiB for object storage
-    #    bundle_size: 128MiB           # Target size for file bundles, 128MiB for object storage
-    #    cipher_type: aes-256-cbc      # enable AES encryption for remote backup repo
-    #    cipher_pass: pgBackRest       # AES encryption password, default is 'pgBackRest'
-    #    retention_full_type: time     # retention full backup by time on minio repo
-    #    retention_full: 14            # keep full backup for last 14 days
+    minio_endpoint: https://sss.pigsty:9000 # explicit overwrite minio endpoint with haproxy port
+    pgbackrest_method: minio              # pgbackrest repo method: local,minio,[user-defined...]
+    pgbackrest_repo:                      # pgbackrest repo: https://pgbackrest.org/configuration.html#section-repository
+      local:                              # default pgbackrest repo with local posix fs
+        path: /pg/backup                  # local backup directory, `/pg/backup` by default
+        retention_full_type: count        # retention full backups by count
+        retention_full: 2                 # keep 2, at most 3 full backups when using local fs repo
+      minio:                              # optional minio repo for pgbackrest
+        type: s3                          # minio is s3-compatible, so s3 is used
+        s3_endpoint: sss.pigsty           # minio endpoint domain name, `sss.pigsty` by default
+        s3_region: us-east-1              # minio region, us-east-1 by default, useless for minio
+        s3_bucket: pgsql                  # minio bucket name, `pgsql` by default
+        s3_key: pgbackrest                # minio user access key for pgbackrest
+        s3_key_secret: S3User.Backup      # minio user secret key for pgbackrest <------------------ HEY, DID YOU CHANGE THIS?
+        s3_uri_style: path                # use path style uri for minio rather than host style
+        path: /pgbackrest                 # minio backup path, default is `/pgbackrest`
+        storage_port: 9000                # minio port, 9000 by default
+        storage_ca_file: /etc/pki/ca.crt  # minio ca file path, `/etc/pki/ca.crt` by default
+        block: y                          # Enable block incremental backup
+        bundle: y                         # bundle small files into a single file
+        bundle_limit: 20MiB               # Limit for file bundles, 20MiB for object storage
+        bundle_size: 128MiB               # Target size for file bundles, 128MiB for object storage
+        cipher_type: aes-256-cbc          # enable AES encryption for remote backup repo
+        cipher_pass: pgBackRest           # AES encryption password, default is 'pgBackRest'  <----- HEY, DID YOU CHANGE THIS?
+        retention_full_type: time         # retention full backup by time on minio repo
+        retention_full: 14                # keep full backup for the last 14 days
+      s3:                                 # you can use cloud object storage as backup repo
+        type: s3                          # Add your object storage credentials here!
+        s3_endpoint: oss-cn-beijing-internal.aliyuncs.com
+        s3_region: oss-cn-beijing
+        s3_bucket: <your_bucket_name>
+        s3_key: <your_access_key>
+        s3_key_secret: <your_secret_key>
+        s3_uri_style: host
+        path: /pgbackrest
+        bundle: y                         # bundle small files into a single file
+        bundle_limit: 20MiB               # Limit for file bundles, 20MiB for object storage
+        bundle_size: 128MiB               # Target size for file bundles, 128MiB for object storage
+        cipher_type: aes-256-cbc          # enable AES encryption for remote backup repo
+        cipher_pass: pgBackRest           # AES encryption password, default is 'pgBackRest'
+        retention_full_type: time         # retention full backup by time on minio repo
+        retention_full: 14                # keep full backup for the last 14 days
 
     #----------------------------------------------#
     # PASSWORD : https://pigsty.io/docs/setup/security/
     #----------------------------------------------#
-    grafana_admin_password: I9keTYDS3EhNdFEj4uLbxbs6
-    grafana_view_password: VcyfqNvfMRQDa0hwHyeuLAX1
-    pg_admin_password: 4EdmGnPQKkWbD6yxTUMbODEr
-    pg_monitor_password: DQCjed2cwKJaphNtVZOQA5tZ
-    pg_replication_password: jPEDX7g7Sh6WcDhCvSIOW1kl
-    patroni_password: VlzblSTChyktdeixr6oM76lC
-    haproxy_admin_password: Q2qgS1mPVfqTC56lqa6svmFM
-    minio_secret_key: wMaM2lPenNkKqVOIc0Qr1jkT
-    etcd_root_password: f2iU3bQ2fCLEcRf2g0oTFJhS
+    grafana_admin_password: pigsty
+    grafana_view_password: DBUser.Viewer
+    pg_admin_password: DBUser.DBA
+    pg_monitor_password: DBUser.Monitor
+    pg_replication_password: DBUser.Replicator
+    patroni_password: Patroni.API
+    haproxy_admin_password: pigsty
+    minio_secret_key: S3User.MinIO
+    etcd_root_password: Etcd.Root
 ...

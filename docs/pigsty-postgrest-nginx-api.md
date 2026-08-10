@@ -586,6 +586,38 @@ ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON FUNCTIONS TO dbuser_app;
 ```
 库的 owner 保持原样（`postgres`/`dbuser_meta`），仅把读写权限赋给 `dbuser_app`。
 
+### 17.10 安全加固：方案 X — 用 `api` schema 隔离扩展危险函数
+**问题**：PostgREST 原暴露 `public` schema，其 OpenAPI 会列出 PostgreSQL 扩展自带的函数/处理器
+（`postgres_fdw_*`、`file_fdw_handler`、`show_trgm`、`show_limit` 等），构成不必要的攻击面。
+
+**方案 X（已落地）**：PostgREST 改为**只暴露 `api` schema**，彻底隔离 `public` 中的扩展对象。
+由 superuser(`postgres`) 在每个库（appdb + pg1~pg100）执行（脚本 `app/postgrest/multi/setup_api_schema.sh`）：
+```sql
+CREATE SCHEMA IF NOT EXISTS api;
+-- 将 public 下的用户基表整体迁移到 api（数据不动，权限跟随）
+ALTER TABLE public.<t> SET SCHEMA api;
+-- 授权
+GRANT CREATE, USAGE ON SCHEMA api TO dbuser_app;
+GRANT ALL ON ALL TABLES IN SCHEMA api TO dbuser_app;
+GRANT ALL ON ALL SEQUENCES IN SCHEMA api TO dbuser_app;
+ALTER DEFAULT PRIVILEGES IN SCHEMA api GRANT ALL ON TABLES    TO dbuser_app;
+ALTER DEFAULT PRIVILEGES IN SCHEMA api GRANT ALL ON SEQUENCES TO dbuser_app;
+-- 仅暴露安全 RPC：create_table（建表落在 api schema）
+CREATE OR REPLACE FUNCTION api.create_table(...) ...
+```
+`gen_multi.sh` 同步改为 `PGRST_DB_SCHEMA: api`，重新生成并 `docker compose up -d` 重建 100 容器。
+
+**效果验证**：
+```text
+GET /pg1/  →  paths: ['/', '/rpc/create_table', '/todos', '/user']
+            （postgres_fdw_* / file_fdw_handler / show_trgm / show_limit 全部消失）✅
+POST /pg1/rpc/create_table {"table_name":"x_test","columns":"id int primary key, v text"} → {"ok":true,"schema":"api"} ✅
+POST /pg1/x_test {"id":1,"v":"hi"} → [{"id":1,"v":"hi"}] ✅
+```
+> 注：Nginx 的 `/pgN/openapi.json` 为静态落盘文件，需重跑
+> `/usr/local/bin/pigstyapi-openapi-sync-all.sh` 刷新（已刷新至最新 api-only 内容）。
+> 业务表现统一位于 `api` schema，新建表通过 `create_table` RPC 自动落在 `api`。
+
 ### 17.4 部署文件
 | 文件 | 作用 |
 |------|------|
@@ -601,11 +633,11 @@ cd app/postgrest && docker compose -f docker-compose.multi.yml up -d
 nginx -s reload
 ```
 
-### 17.5 自助建表 RPC（每库已部署 `create_table`）
-所有库（含 pg1~pg100、appdb）均已部署：
+### 17.5 自助建表 RPC（每库 `api` schema 已部署 `create_table`）
+所有库（含 pg1~pg100、appdb）的 `api` schema 均已部署（方案 X 后迁移至此）：
 ```sql
-CREATE OR REPLACE FUNCTION create_table(table_name text, columns text) RETURNS jsonb ...
-  -- 建表后 PERFORM pg_notify('pgrst', 'reload schema');  ← 注意是 reload schema 不是 reload config
+CREATE OR REPLACE FUNCTION api.create_table(table_name text, columns text) RETURNS jsonb ...
+  -- 内部 CREATE TABLE 落在 api schema；建表后 PERFORM pg_notify('pgrst', 'reload schema');
 ```
 调用（以 pg4 为例）：
 ```http

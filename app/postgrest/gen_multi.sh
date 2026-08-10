@@ -21,7 +21,7 @@ for n in $(seq 1 100); do
     restart: always
     environment:
       PGRST_DB_URI: postgres://${APP_USER}:${APP_PWD}@${PGHOST}:5432/${db}
-      PGRST_DB_SCHEMA: public
+      PGRST_DB_SCHEMA: api
       PGRST_DB_ANON_ROLE: ${APP_USER}
       PGRST_SERVER_PORT: ${port}
       PGRST_JWT_SECRET: ${JWT}

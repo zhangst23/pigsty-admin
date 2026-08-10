@@ -8,7 +8,7 @@ services:
     restart: always
     environment:
       PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg1
-      PGRST_DB_SCHEMA: public
+      PGRST_DB_SCHEMA: api
       PGRST_DB_ANON_ROLE: dbuser_app
       PGRST_SERVER_PORT: 3101
       PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
@@ -23,7 +23,7 @@ services:
     restart: always
     environment:
       PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg2
-      PGRST_DB_SCHEMA: public
+      PGRST_DB_SCHEMA: api
       PGRST_DB_ANON_ROLE: dbuser_app
       PGRST_SERVER_PORT: 3102
       PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
@@ -38,7 +38,7 @@ services:
     restart: always
     environment:
       PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg3
-      PGRST_DB_SCHEMA: public
+      PGRST_DB_SCHEMA: api
       PGRST_DB_ANON_ROLE: dbuser_app
       PGRST_SERVER_PORT: 3103
       PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
@@ -53,7 +53,7 @@ services:
     restart: always
     environment:
       PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg4
-      PGRST_DB_SCHEMA: public
+      PGRST_DB_SCHEMA: api
       PGRST_DB_ANON_ROLE: dbuser_app
       PGRST_SERVER_PORT: 3104
       PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
@@ -68,7 +68,7 @@ services:
     restart: always
     environment:
       PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg5
-      PGRST_DB_SCHEMA: public
+      PGRST_DB_SCHEMA: api
       PGRST_DB_ANON_ROLE: dbuser_app
       PGRST_SERVER_PORT: 3105
       PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
@@ -83,7 +83,7 @@ services:
     restart: always
     environment:
       PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg6
-      PGRST_DB_SCHEMA: public
+      PGRST_DB_SCHEMA: api
       PGRST_DB_ANON_ROLE: dbuser_app
       PGRST_SERVER_PORT: 3106
       PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
@@ -98,7 +98,7 @@ services:
     restart: always
     environment:
       PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg7
-      PGRST_DB_SCHEMA: public
+      PGRST_DB_SCHEMA: api
       PGRST_DB_ANON_ROLE: dbuser_app
       PGRST_SERVER_PORT: 3107
       PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
@@ -113,7 +113,7 @@ services:
     restart: always
     environment:
       PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg8
-      PGRST_DB_SCHEMA: public
+      PGRST_DB_SCHEMA: api
       PGRST_DB_ANON_ROLE: dbuser_app
       PGRST_SERVER_PORT: 3108
       PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
@@ -128,7 +128,7 @@ services:
     restart: always
     environment:
       PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg9
-      PGRST_DB_SCHEMA: public
+      PGRST_DB_SCHEMA: api
       PGRST_DB_ANON_ROLE: dbuser_app
       PGRST_SERVER_PORT: 3109
       PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
@@ -143,7 +143,7 @@ services:
     restart: always
     environment:
       PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg10
-      PGRST_DB_SCHEMA: public
+      PGRST_DB_SCHEMA: api
       PGRST_DB_ANON_ROLE: dbuser_app
       PGRST_SERVER_PORT: 3110
       PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
@@ -158,7 +158,7 @@ services:
     restart: always
     environment:
       PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg11
-      PGRST_DB_SCHEMA: public
+      PGRST_DB_SCHEMA: api
       PGRST_DB_ANON_ROLE: dbuser_app
       PGRST_SERVER_PORT: 3111
       PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
@@ -173,7 +173,7 @@ services:
     restart: always
     environment:
       PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg12
-      PGRST_DB_SCHEMA: public
+      PGRST_DB_SCHEMA: api
       PGRST_DB_ANON_ROLE: dbuser_app
       PGRST_SERVER_PORT: 3112
       PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
@@ -188,7 +188,7 @@ services:
     restart: always
     environment:
       PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg13
-      PGRST_DB_SCHEMA: public
+      PGRST_DB_SCHEMA: api
       PGRST_DB_ANON_ROLE: dbuser_app
       PGRST_SERVER_PORT: 3113
       PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
@@ -203,7 +203,7 @@ services:
     restart: always
     environment:
       PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg14
-      PGRST_DB_SCHEMA: public
+      PGRST_DB_SCHEMA: api
       PGRST_DB_ANON_ROLE: dbuser_app
       PGRST_SERVER_PORT: 3114
       PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
@@ -218,7 +218,7 @@ services:
     restart: always
     environment:
       PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg15
-      PGRST_DB_SCHEMA: public
+      PGRST_DB_SCHEMA: api
       PGRST_DB_ANON_ROLE: dbuser_app
       PGRST_SERVER_PORT: 3115
       PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
@@ -233,7 +233,7 @@ services:
     restart: always
     environment:
       PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg16
-      PGRST_DB_SCHEMA: public
+      PGRST_DB_SCHEMA: api
       PGRST_DB_ANON_ROLE: dbuser_app
       PGRST_SERVER_PORT: 3116
       PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
@@ -248,7 +248,7 @@ services:
     restart: always
     environment:
       PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg17
-      PGRST_DB_SCHEMA: public
+      PGRST_DB_SCHEMA: api
       PGRST_DB_ANON_ROLE: dbuser_app
       PGRST_SERVER_PORT: 3117
       PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
@@ -263,7 +263,7 @@ services:
     restart: always
     environment:
       PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg18
-      PGRST_DB_SCHEMA: public
+      PGRST_DB_SCHEMA: api
       PGRST_DB_ANON_ROLE: dbuser_app
       PGRST_SERVER_PORT: 3118
       PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
@@ -278,7 +278,7 @@ services:
     restart: always
     environment:
       PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg19
-      PGRST_DB_SCHEMA: public
+      PGRST_DB_SCHEMA: api
       PGRST_DB_ANON_ROLE: dbuser_app
       PGRST_SERVER_PORT: 3119
       PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
@@ -293,7 +293,7 @@ services:
     restart: always
     environment:
       PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg20
-      PGRST_DB_SCHEMA: public
+      PGRST_DB_SCHEMA: api
       PGRST_DB_ANON_ROLE: dbuser_app
       PGRST_SERVER_PORT: 3120
       PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
@@ -308,7 +308,7 @@ services:
     restart: always
     environment:
       PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg21
-      PGRST_DB_SCHEMA: public
+      PGRST_DB_SCHEMA: api
       PGRST_DB_ANON_ROLE: dbuser_app
       PGRST_SERVER_PORT: 3121
       PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
@@ -323,7 +323,7 @@ services:
     restart: always
     environment:
       PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg22
-      PGRST_DB_SCHEMA: public
+      PGRST_DB_SCHEMA: api
       PGRST_DB_ANON_ROLE: dbuser_app
       PGRST_SERVER_PORT: 3122
       PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
@@ -338,7 +338,7 @@ services:
     restart: always
     environment:
       PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg23
-      PGRST_DB_SCHEMA: public
+      PGRST_DB_SCHEMA: api
       PGRST_DB_ANON_ROLE: dbuser_app
       PGRST_SERVER_PORT: 3123
       PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
@@ -353,7 +353,7 @@ services:
     restart: always
     environment:
       PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg24
-      PGRST_DB_SCHEMA: public
+      PGRST_DB_SCHEMA: api
       PGRST_DB_ANON_ROLE: dbuser_app
       PGRST_SERVER_PORT: 3124
       PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
@@ -368,7 +368,7 @@ services:
     restart: always
     environment:
       PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg25
-      PGRST_DB_SCHEMA: public
+      PGRST_DB_SCHEMA: api
       PGRST_DB_ANON_ROLE: dbuser_app
       PGRST_SERVER_PORT: 3125
       PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
@@ -383,7 +383,7 @@ services:
     restart: always
     environment:
       PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg26
-      PGRST_DB_SCHEMA: public
+      PGRST_DB_SCHEMA: api
       PGRST_DB_ANON_ROLE: dbuser_app
       PGRST_SERVER_PORT: 3126
       PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
@@ -398,7 +398,7 @@ services:
     restart: always
     environment:
       PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg27
-      PGRST_DB_SCHEMA: public
+      PGRST_DB_SCHEMA: api
       PGRST_DB_ANON_ROLE: dbuser_app
       PGRST_SERVER_PORT: 3127
       PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
@@ -413,7 +413,7 @@ services:
     restart: always
     environment:
       PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg28
-      PGRST_DB_SCHEMA: public
+      PGRST_DB_SCHEMA: api
       PGRST_DB_ANON_ROLE: dbuser_app
       PGRST_SERVER_PORT: 3128
       PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
@@ -428,7 +428,7 @@ services:
     restart: always
     environment:
       PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg29
-      PGRST_DB_SCHEMA: public
+      PGRST_DB_SCHEMA: api
       PGRST_DB_ANON_ROLE: dbuser_app
       PGRST_SERVER_PORT: 3129
       PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
@@ -443,7 +443,7 @@ services:
     restart: always
     environment:
       PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg30
-      PGRST_DB_SCHEMA: public
+      PGRST_DB_SCHEMA: api
       PGRST_DB_ANON_ROLE: dbuser_app
       PGRST_SERVER_PORT: 3130
       PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
@@ -458,7 +458,7 @@ services:
     restart: always
     environment:
       PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg31
-      PGRST_DB_SCHEMA: public
+      PGRST_DB_SCHEMA: api
       PGRST_DB_ANON_ROLE: dbuser_app
       PGRST_SERVER_PORT: 3131
       PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
@@ -473,7 +473,7 @@ services:
     restart: always
     environment:
       PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg32
-      PGRST_DB_SCHEMA: public
+      PGRST_DB_SCHEMA: api
       PGRST_DB_ANON_ROLE: dbuser_app
       PGRST_SERVER_PORT: 3132
       PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
@@ -488,7 +488,7 @@ services:
     restart: always
     environment:
       PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg33
-      PGRST_DB_SCHEMA: public
+      PGRST_DB_SCHEMA: api
       PGRST_DB_ANON_ROLE: dbuser_app
       PGRST_SERVER_PORT: 3133
       PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
@@ -503,7 +503,7 @@ services:
     restart: always
     environment:
       PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg34
-      PGRST_DB_SCHEMA: public
+      PGRST_DB_SCHEMA: api
       PGRST_DB_ANON_ROLE: dbuser_app
       PGRST_SERVER_PORT: 3134
       PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
@@ -518,7 +518,7 @@ services:
     restart: always
     environment:
       PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg35
-      PGRST_DB_SCHEMA: public
+      PGRST_DB_SCHEMA: api
       PGRST_DB_ANON_ROLE: dbuser_app
       PGRST_SERVER_PORT: 3135
       PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
@@ -533,7 +533,7 @@ services:
     restart: always
     environment:
       PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg36
-      PGRST_DB_SCHEMA: public
+      PGRST_DB_SCHEMA: api
       PGRST_DB_ANON_ROLE: dbuser_app
       PGRST_SERVER_PORT: 3136
       PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
@@ -548,7 +548,7 @@ services:
     restart: always
     environment:
       PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg37
-      PGRST_DB_SCHEMA: public
+      PGRST_DB_SCHEMA: api
       PGRST_DB_ANON_ROLE: dbuser_app
       PGRST_SERVER_PORT: 3137
       PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
@@ -563,7 +563,7 @@ services:
     restart: always
     environment:
       PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg38
-      PGRST_DB_SCHEMA: public
+      PGRST_DB_SCHEMA: api
       PGRST_DB_ANON_ROLE: dbuser_app
       PGRST_SERVER_PORT: 3138
       PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
@@ -578,7 +578,7 @@ services:
     restart: always
     environment:
       PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg39
-      PGRST_DB_SCHEMA: public
+      PGRST_DB_SCHEMA: api
       PGRST_DB_ANON_ROLE: dbuser_app
       PGRST_SERVER_PORT: 3139
       PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
@@ -593,7 +593,7 @@ services:
     restart: always
     environment:
       PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg40
-      PGRST_DB_SCHEMA: public
+      PGRST_DB_SCHEMA: api
       PGRST_DB_ANON_ROLE: dbuser_app
       PGRST_SERVER_PORT: 3140
       PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
@@ -608,7 +608,7 @@ services:
     restart: always
     environment:
       PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg41
-      PGRST_DB_SCHEMA: public
+      PGRST_DB_SCHEMA: api
       PGRST_DB_ANON_ROLE: dbuser_app
       PGRST_SERVER_PORT: 3141
       PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
@@ -623,7 +623,7 @@ services:
     restart: always
     environment:
       PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg42
-      PGRST_DB_SCHEMA: public
+      PGRST_DB_SCHEMA: api
       PGRST_DB_ANON_ROLE: dbuser_app
       PGRST_SERVER_PORT: 3142
       PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
@@ -638,7 +638,7 @@ services:
     restart: always
     environment:
       PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg43
-      PGRST_DB_SCHEMA: public
+      PGRST_DB_SCHEMA: api
       PGRST_DB_ANON_ROLE: dbuser_app
       PGRST_SERVER_PORT: 3143
       PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
@@ -653,7 +653,7 @@ services:
     restart: always
     environment:
       PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg44
-      PGRST_DB_SCHEMA: public
+      PGRST_DB_SCHEMA: api
       PGRST_DB_ANON_ROLE: dbuser_app
       PGRST_SERVER_PORT: 3144
       PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
@@ -668,7 +668,7 @@ services:
     restart: always
     environment:
       PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg45
-      PGRST_DB_SCHEMA: public
+      PGRST_DB_SCHEMA: api
       PGRST_DB_ANON_ROLE: dbuser_app
       PGRST_SERVER_PORT: 3145
       PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
@@ -683,7 +683,7 @@ services:
     restart: always
     environment:
       PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg46
-      PGRST_DB_SCHEMA: public
+      PGRST_DB_SCHEMA: api
       PGRST_DB_ANON_ROLE: dbuser_app
       PGRST_SERVER_PORT: 3146
       PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
@@ -698,7 +698,7 @@ services:
     restart: always
     environment:
       PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg47
-      PGRST_DB_SCHEMA: public
+      PGRST_DB_SCHEMA: api
       PGRST_DB_ANON_ROLE: dbuser_app
       PGRST_SERVER_PORT: 3147
       PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
@@ -713,7 +713,7 @@ services:
     restart: always
     environment:
       PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg48
-      PGRST_DB_SCHEMA: public
+      PGRST_DB_SCHEMA: api
       PGRST_DB_ANON_ROLE: dbuser_app
       PGRST_SERVER_PORT: 3148
       PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
@@ -728,7 +728,7 @@ services:
     restart: always
     environment:
       PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg49
-      PGRST_DB_SCHEMA: public
+      PGRST_DB_SCHEMA: api
       PGRST_DB_ANON_ROLE: dbuser_app
       PGRST_SERVER_PORT: 3149
       PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
@@ -743,7 +743,7 @@ services:
     restart: always
     environment:
       PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg50
-      PGRST_DB_SCHEMA: public
+      PGRST_DB_SCHEMA: api
       PGRST_DB_ANON_ROLE: dbuser_app
       PGRST_SERVER_PORT: 3150
       PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
@@ -758,7 +758,7 @@ services:
     restart: always
     environment:
       PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg51
-      PGRST_DB_SCHEMA: public
+      PGRST_DB_SCHEMA: api
       PGRST_DB_ANON_ROLE: dbuser_app
       PGRST_SERVER_PORT: 3151
       PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
@@ -773,7 +773,7 @@ services:
     restart: always
     environment:
       PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg52
-      PGRST_DB_SCHEMA: public
+      PGRST_DB_SCHEMA: api
       PGRST_DB_ANON_ROLE: dbuser_app
       PGRST_SERVER_PORT: 3152
       PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
@@ -788,7 +788,7 @@ services:
     restart: always
     environment:
       PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg53
-      PGRST_DB_SCHEMA: public
+      PGRST_DB_SCHEMA: api
       PGRST_DB_ANON_ROLE: dbuser_app
       PGRST_SERVER_PORT: 3153
       PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
@@ -803,7 +803,7 @@ services:
     restart: always
     environment:
       PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg54
-      PGRST_DB_SCHEMA: public
+      PGRST_DB_SCHEMA: api
       PGRST_DB_ANON_ROLE: dbuser_app
       PGRST_SERVER_PORT: 3154
       PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
@@ -818,7 +818,7 @@ services:
     restart: always
     environment:
       PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg55
-      PGRST_DB_SCHEMA: public
+      PGRST_DB_SCHEMA: api
       PGRST_DB_ANON_ROLE: dbuser_app
       PGRST_SERVER_PORT: 3155
       PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
@@ -833,7 +833,7 @@ services:
     restart: always
     environment:
       PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg56
-      PGRST_DB_SCHEMA: public
+      PGRST_DB_SCHEMA: api
       PGRST_DB_ANON_ROLE: dbuser_app
       PGRST_SERVER_PORT: 3156
       PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
@@ -848,7 +848,7 @@ services:
     restart: always
     environment:
       PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg57
-      PGRST_DB_SCHEMA: public
+      PGRST_DB_SCHEMA: api
       PGRST_DB_ANON_ROLE: dbuser_app
       PGRST_SERVER_PORT: 3157
       PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
@@ -863,7 +863,7 @@ services:
     restart: always
     environment:
       PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg58
-      PGRST_DB_SCHEMA: public
+      PGRST_DB_SCHEMA: api
       PGRST_DB_ANON_ROLE: dbuser_app
       PGRST_SERVER_PORT: 3158
       PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
@@ -878,7 +878,7 @@ services:
     restart: always
     environment:
       PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg59
-      PGRST_DB_SCHEMA: public
+      PGRST_DB_SCHEMA: api
       PGRST_DB_ANON_ROLE: dbuser_app
       PGRST_SERVER_PORT: 3159
       PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
@@ -893,7 +893,7 @@ services:
     restart: always
     environment:
       PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg60
-      PGRST_DB_SCHEMA: public
+      PGRST_DB_SCHEMA: api
       PGRST_DB_ANON_ROLE: dbuser_app
       PGRST_SERVER_PORT: 3160
       PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
@@ -908,7 +908,7 @@ services:
     restart: always
     environment:
       PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg61
-      PGRST_DB_SCHEMA: public
+      PGRST_DB_SCHEMA: api
       PGRST_DB_ANON_ROLE: dbuser_app
       PGRST_SERVER_PORT: 3161
       PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
@@ -923,7 +923,7 @@ services:
     restart: always
     environment:
       PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg62
-      PGRST_DB_SCHEMA: public
+      PGRST_DB_SCHEMA: api
       PGRST_DB_ANON_ROLE: dbuser_app
       PGRST_SERVER_PORT: 3162
       PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
@@ -938,7 +938,7 @@ services:
     restart: always
     environment:
       PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg63
-      PGRST_DB_SCHEMA: public
+      PGRST_DB_SCHEMA: api
       PGRST_DB_ANON_ROLE: dbuser_app
       PGRST_SERVER_PORT: 3163
       PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
@@ -953,7 +953,7 @@ services:
     restart: always
     environment:
       PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg64
-      PGRST_DB_SCHEMA: public
+      PGRST_DB_SCHEMA: api
       PGRST_DB_ANON_ROLE: dbuser_app
       PGRST_SERVER_PORT: 3164
       PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
@@ -968,7 +968,7 @@ services:
     restart: always
     environment:
       PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg65
-      PGRST_DB_SCHEMA: public
+      PGRST_DB_SCHEMA: api
       PGRST_DB_ANON_ROLE: dbuser_app
       PGRST_SERVER_PORT: 3165
       PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
@@ -983,7 +983,7 @@ services:
     restart: always
     environment:
       PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg66
-      PGRST_DB_SCHEMA: public
+      PGRST_DB_SCHEMA: api
       PGRST_DB_ANON_ROLE: dbuser_app
       PGRST_SERVER_PORT: 3166
       PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
@@ -998,7 +998,7 @@ services:
     restart: always
     environment:
       PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg67
-      PGRST_DB_SCHEMA: public
+      PGRST_DB_SCHEMA: api
       PGRST_DB_ANON_ROLE: dbuser_app
       PGRST_SERVER_PORT: 3167
       PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
@@ -1013,7 +1013,7 @@ services:
     restart: always
     environment:
       PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg68
-      PGRST_DB_SCHEMA: public
+      PGRST_DB_SCHEMA: api
       PGRST_DB_ANON_ROLE: dbuser_app
       PGRST_SERVER_PORT: 3168
       PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
@@ -1028,7 +1028,7 @@ services:
     restart: always
     environment:
       PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg69
-      PGRST_DB_SCHEMA: public
+      PGRST_DB_SCHEMA: api
       PGRST_DB_ANON_ROLE: dbuser_app
       PGRST_SERVER_PORT: 3169
       PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
@@ -1043,7 +1043,7 @@ services:
     restart: always
     environment:
       PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg70
-      PGRST_DB_SCHEMA: public
+      PGRST_DB_SCHEMA: api
       PGRST_DB_ANON_ROLE: dbuser_app
       PGRST_SERVER_PORT: 3170
       PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
@@ -1058,7 +1058,7 @@ services:
     restart: always
     environment:
       PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg71
-      PGRST_DB_SCHEMA: public
+      PGRST_DB_SCHEMA: api
       PGRST_DB_ANON_ROLE: dbuser_app
       PGRST_SERVER_PORT: 3171
       PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
@@ -1073,7 +1073,7 @@ services:
     restart: always
     environment:
       PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg72
-      PGRST_DB_SCHEMA: public
+      PGRST_DB_SCHEMA: api
       PGRST_DB_ANON_ROLE: dbuser_app
       PGRST_SERVER_PORT: 3172
       PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
@@ -1088,7 +1088,7 @@ services:
     restart: always
     environment:
       PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg73
-      PGRST_DB_SCHEMA: public
+      PGRST_DB_SCHEMA: api
       PGRST_DB_ANON_ROLE: dbuser_app
       PGRST_SERVER_PORT: 3173
       PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
@@ -1103,7 +1103,7 @@ services:
     restart: always
     environment:
       PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg74
-      PGRST_DB_SCHEMA: public
+      PGRST_DB_SCHEMA: api
       PGRST_DB_ANON_ROLE: dbuser_app
       PGRST_SERVER_PORT: 3174
       PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
@@ -1118,7 +1118,7 @@ services:
     restart: always
     environment:
       PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg75
-      PGRST_DB_SCHEMA: public
+      PGRST_DB_SCHEMA: api
       PGRST_DB_ANON_ROLE: dbuser_app
       PGRST_SERVER_PORT: 3175
       PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
@@ -1133,7 +1133,7 @@ services:
     restart: always
     environment:
       PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg76
-      PGRST_DB_SCHEMA: public
+      PGRST_DB_SCHEMA: api
       PGRST_DB_ANON_ROLE: dbuser_app
       PGRST_SERVER_PORT: 3176
       PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
@@ -1148,7 +1148,7 @@ services:
     restart: always
     environment:
       PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg77
-      PGRST_DB_SCHEMA: public
+      PGRST_DB_SCHEMA: api
       PGRST_DB_ANON_ROLE: dbuser_app
       PGRST_SERVER_PORT: 3177
       PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
@@ -1163,7 +1163,7 @@ services:
     restart: always
     environment:
       PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg78
-      PGRST_DB_SCHEMA: public
+      PGRST_DB_SCHEMA: api
       PGRST_DB_ANON_ROLE: dbuser_app
       PGRST_SERVER_PORT: 3178
       PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
@@ -1178,7 +1178,7 @@ services:
     restart: always
     environment:
       PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg79
-      PGRST_DB_SCHEMA: public
+      PGRST_DB_SCHEMA: api
       PGRST_DB_ANON_ROLE: dbuser_app
       PGRST_SERVER_PORT: 3179
       PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
@@ -1193,7 +1193,7 @@ services:
     restart: always
     environment:
       PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg80
-      PGRST_DB_SCHEMA: public
+      PGRST_DB_SCHEMA: api
       PGRST_DB_ANON_ROLE: dbuser_app
       PGRST_SERVER_PORT: 3180
       PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
@@ -1208,7 +1208,7 @@ services:
     restart: always
     environment:
       PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg81
-      PGRST_DB_SCHEMA: public
+      PGRST_DB_SCHEMA: api
       PGRST_DB_ANON_ROLE: dbuser_app
       PGRST_SERVER_PORT: 3181
       PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
@@ -1223,7 +1223,7 @@ services:
     restart: always
     environment:
       PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg82
-      PGRST_DB_SCHEMA: public
+      PGRST_DB_SCHEMA: api
       PGRST_DB_ANON_ROLE: dbuser_app
       PGRST_SERVER_PORT: 3182
       PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
@@ -1238,7 +1238,7 @@ services:
     restart: always
     environment:
       PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg83
-      PGRST_DB_SCHEMA: public
+      PGRST_DB_SCHEMA: api
       PGRST_DB_ANON_ROLE: dbuser_app
       PGRST_SERVER_PORT: 3183
       PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
@@ -1253,7 +1253,7 @@ services:
     restart: always
     environment:
       PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg84
-      PGRST_DB_SCHEMA: public
+      PGRST_DB_SCHEMA: api
       PGRST_DB_ANON_ROLE: dbuser_app
       PGRST_SERVER_PORT: 3184
       PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
@@ -1268,7 +1268,7 @@ services:
     restart: always
     environment:
       PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg85
-      PGRST_DB_SCHEMA: public
+      PGRST_DB_SCHEMA: api
       PGRST_DB_ANON_ROLE: dbuser_app
       PGRST_SERVER_PORT: 3185
       PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
@@ -1283,7 +1283,7 @@ services:
     restart: always
     environment:
       PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg86
-      PGRST_DB_SCHEMA: public
+      PGRST_DB_SCHEMA: api
       PGRST_DB_ANON_ROLE: dbuser_app
       PGRST_SERVER_PORT: 3186
       PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
@@ -1298,7 +1298,7 @@ services:
     restart: always
     environment:
       PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg87
-      PGRST_DB_SCHEMA: public
+      PGRST_DB_SCHEMA: api
       PGRST_DB_ANON_ROLE: dbuser_app
       PGRST_SERVER_PORT: 3187
       PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
@@ -1313,7 +1313,7 @@ services:
     restart: always
     environment:
       PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg88
-      PGRST_DB_SCHEMA: public
+      PGRST_DB_SCHEMA: api
       PGRST_DB_ANON_ROLE: dbuser_app
       PGRST_SERVER_PORT: 3188
       PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
@@ -1328,7 +1328,7 @@ services:
     restart: always
     environment:
       PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg89
-      PGRST_DB_SCHEMA: public
+      PGRST_DB_SCHEMA: api
       PGRST_DB_ANON_ROLE: dbuser_app
       PGRST_SERVER_PORT: 3189
       PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
@@ -1343,7 +1343,7 @@ services:
     restart: always
     environment:
       PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg90
-      PGRST_DB_SCHEMA: public
+      PGRST_DB_SCHEMA: api
       PGRST_DB_ANON_ROLE: dbuser_app
       PGRST_SERVER_PORT: 3190
       PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
@@ -1358,7 +1358,7 @@ services:
     restart: always
     environment:
       PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg91
-      PGRST_DB_SCHEMA: public
+      PGRST_DB_SCHEMA: api
       PGRST_DB_ANON_ROLE: dbuser_app
       PGRST_SERVER_PORT: 3191
       PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
@@ -1373,7 +1373,7 @@ services:
     restart: always
     environment:
       PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg92
-      PGRST_DB_SCHEMA: public
+      PGRST_DB_SCHEMA: api
       PGRST_DB_ANON_ROLE: dbuser_app
       PGRST_SERVER_PORT: 3192
       PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
@@ -1388,7 +1388,7 @@ services:
     restart: always
     environment:
       PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg93
-      PGRST_DB_SCHEMA: public
+      PGRST_DB_SCHEMA: api
       PGRST_DB_ANON_ROLE: dbuser_app
       PGRST_SERVER_PORT: 3193
       PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
@@ -1403,7 +1403,7 @@ services:
     restart: always
     environment:
       PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg94
-      PGRST_DB_SCHEMA: public
+      PGRST_DB_SCHEMA: api
       PGRST_DB_ANON_ROLE: dbuser_app
       PGRST_SERVER_PORT: 3194
       PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
@@ -1418,7 +1418,7 @@ services:
     restart: always
     environment:
       PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg95
-      PGRST_DB_SCHEMA: public
+      PGRST_DB_SCHEMA: api
       PGRST_DB_ANON_ROLE: dbuser_app
       PGRST_SERVER_PORT: 3195
       PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
@@ -1433,7 +1433,7 @@ services:
     restart: always
     environment:
       PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg96
-      PGRST_DB_SCHEMA: public
+      PGRST_DB_SCHEMA: api
       PGRST_DB_ANON_ROLE: dbuser_app
       PGRST_SERVER_PORT: 3196
       PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
@@ -1448,7 +1448,7 @@ services:
     restart: always
     environment:
       PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg97
-      PGRST_DB_SCHEMA: public
+      PGRST_DB_SCHEMA: api
       PGRST_DB_ANON_ROLE: dbuser_app
       PGRST_SERVER_PORT: 3197
       PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
@@ -1463,7 +1463,7 @@ services:
     restart: always
     environment:
       PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg98
-      PGRST_DB_SCHEMA: public
+      PGRST_DB_SCHEMA: api
       PGRST_DB_ANON_ROLE: dbuser_app
       PGRST_SERVER_PORT: 3198
       PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
@@ -1478,7 +1478,7 @@ services:
     restart: always
     environment:
       PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg99
-      PGRST_DB_SCHEMA: public
+      PGRST_DB_SCHEMA: api
       PGRST_DB_ANON_ROLE: dbuser_app
       PGRST_SERVER_PORT: 3199
       PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
@@ -1493,7 +1493,7 @@ services:
     restart: always
     environment:
       PGRST_DB_URI: postgres://dbuser_app:F1LKkyTDilEyJTDE7hjTGBPu@217.69.2.217:5432/pg100
-      PGRST_DB_SCHEMA: public
+      PGRST_DB_SCHEMA: api
       PGRST_DB_ANON_ROLE: dbuser_app
       PGRST_SERVER_PORT: 3200
       PGRST_JWT_SECRET: 0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB
