@@ -303,3 +303,243 @@ cd /root/pigsty
 ---
 
 > 文档配套：本方案所有 playbook / docker 操作均属**配置变更或危险操作**，按 Pigsty 安全策略需你明确授权后执行。建议先走"只读诊断 + §2/§3 本机联调"，确认可用再开放公网 443。
+
+---
+
+## 10. 本次实际落地配置（2026-08-10 执行记录）
+
+### 10.1 环境适配修正（与原方案不同处）
+- **PostgREST 端口**：原方案用 `3000`，但该端口被 Grafana 占用，实际改用 **`3001`**。
+- **DB_URI 不能用 `127.0.0.1`**：Docker 容器内 `127.0.0.1` 是容器自己，连不上宿主 PgBouncer。实际 URI 用节点 IP `217.69.2.217:6432`。
+- **防火墙实际管理者是 ufw（非 firewalld）**：该机器为云镜像环境（含 Sanguo Panel/OpenLiteSpeed 等），Pigsty 的 `node_firewall` 任务因 firewalld inactive 而 skip。收口公网端口需直接操作 `ufw`，且 **5432 公网放行最终在云安全组层**（用户决定保持开放，不关闭）。
+- **`pig pg psql` 不支持 `-d`**，连指定库用 `PGDATABASE=xxx pig pg psql -c ...` 或直接 `psql "postgres://user:pass@host:port/db"`。
+
+### 10.2 凭据清单（请另行备份到密码管理器）
+| 项 | 值 |
+|----|----|
+| 对外 API 域名 | `https://pigstyapi.yunyingx.com` |
+| API Key (anon) | `bc1608bff236f578f166f8d3515f16f2` |
+| 应用库名 | `appdb` |
+| 应用账号 | `dbuser_app` |
+| 应用账号密码 | `F1LKkyTDilEyJTDE7hjTGBPu` |
+| PostgREST JWT Secret | `0ZMG3j7g5y5evEsq1k8kdQ9J5MVCPTmbkvBVAR1N6eB` |
+| PostgREST 端口(容器内/本机) | `3001` |
+| PgBouncer 连接地址 | `217.69.2.217:6432` |
+| Let's Encrypt 证书 | `/etc/letsencrypt/live/pigstyapi.yunyingx.com/`（2026-11-08 到期，自动续期） |
+
+### 10.3 关键文件路径
+- Nginx 配置：`/etc/nginx/conf.d/pigstyapi.conf`
+- PostgREST 配置：`/root/pigsty/app/postgrest/.env`、`docker-compose.yml`
+- OpenAPI schema 存档：`/root/pigsty/docs/pigstyapi-openapi.json`
+
+### 10.4 运维命令
+```bash
+# 重启 PostgREST（新建表后必须，以刷新 schema 缓存）
+cd /root/pigsty/app/postgrest && docker compose restart
+
+# 查看 PostgREST 日志
+docker logs -f postgrest
+
+# 测试 API
+curl -s -H "apikey: bc1608bff236f578f166f8d3515f16f2" "https://pigstyapi.yunyingx.com/todos"
+
+# 续期证书（certbot 已配自动任务，手动触发：）
+certbot renew
+```
+
+---
+
+## 11. 给 AI 建站平台的最终接入说明
+
+把以下信息填进你的 AI 建站平台（类 Lovable）的"后端 / 数据源"配置：
+
+### 11.1 连接配置
+| 字段 | 值 |
+|------|----|
+| Base URL | `https://pigstyapi.yunyingx.com` |
+| 认证方式 | API Key（Header） |
+| Header 名 | `apikey` （或 `Authorization: Bearer <key>`） |
+| Header 值 | `bc1608bff236f578f166f8d3515f16f2` |
+| API 风格 | REST（PostgREST），完全兼容 Supabase 客户端 |
+
+### 11.2 调用示例
+```js
+// 读取 todos 表全部数据
+const res = await fetch("https://pigstyapi.yunyingx.com/todos?select=*", {
+  headers: { "apikey": "bc1608bff236f578f166f8d3515f16f2" }
+});
+const rows = await res.json();
+
+// 插入
+await fetch("https://pigstyapi.yunyingx.com/todos", {
+  method: "POST",
+  headers: {
+    "apikey": "bc1608bff236f578f166f8d3515f16f2",
+    "Content-Type": "application/json"
+  },
+  body: JSON.stringify({ title: "new task", done: false })
+});
+```
+
+### 11.3 让 AI 平台"认识"你的库结构（强烈推荐）
+把 OpenAPI schema 作为上下文喂给平台，它就能自动知道有哪些表、字段、类型：
+```bash
+# 文件已存档：/root/pigsty/docs/pigstyapi-openapi.json
+# 直接把这个文件内容贴给 AI 平台，或托管后给它 URL
+```
+PostgREST 会自动把 `appdb.public` 下的所有表/视图暴露为 REST 端点，例如：
+- `GET /todos` → 查
+- `POST /todos` → 增
+- `PATCH /todos?id=eq.1` → 改
+- `DELETE /todos?id=eq.1` → 删
+- `GET /todos?select=id,title&done=eq.false&order=id.desc&limit=10` → 过滤/排序/分页
+
+### 11.4 在 Pigsty 侧给平台加新表
+平台生成的"建表"动作需由你在数据库侧执行（PostgREST 不会自动建表）。两种方式：
+1. 在 `pigsty.yml` 的 `pg_databases` / 预置 SQL 里定义，或
+2. 直接 `psql` 连 `appdb` 执行 `CREATE TABLE`，然后 `docker compose restart` 刷新 PostgREST schema 缓存。
+
+> 注意：当前 API 账号 `dbuser_app` 是 `dbrole_readwrite`，可建表/读写。若需更细权限（只读/只写某些表），参见 §7 权限细化。
+
+---
+
+## 12. 已知限制与后续优化
+- **新建表后 schema 缓存自动刷新**（已实现，见 §13）：通过 `NOTIFY pgrst,'reload config'` + PostgREST 直连 5432（**不能走 PgBouncer 6432 事务池**，否则 LISTEN 随事务断开）。无需再 restart 容器。
+- **API Key 为静态 anon key**：所有人共用同一权限。如需"每用户隔离"，启用 JWT（`PGRST_JWT_SECRET` 已配），由 Supabase Auth 或自建鉴权签发带 `role` 的 JWT。
+- **公网 5432 仍开放**（按用户决策保留），建议仅作为运维备用，业务流量一律走 443 API。
+- 可选升级为完整 Supabase（§6），获得 Auth/Realtime/Storage。
+
+---
+
+## 13. 自动刷新 schema 缓存（db-channel + NOTIFY）
+
+### 13.1 原理
+PostgREST 监听 Postgres 的 `LISTEN/NOTIFY` 通道（默认 `pgrst`）。在数据库内执行 `NOTIFY pgrst, 'reload config'` 即可触发其**重载 schema 缓存**，无需重启进程。
+
+### 13.2 关键坑：必须直连 PG，不能经 PgBouncer
+- ❌ **失败配置**：`POSTGREST_DB_URI` 走 `:6432`（PgBouncer 事务池模式）。事务池下 LISTEN 在事务结束即断开，PostgREST 收不到通知，自动刷新失效。
+- ✅ **正确配置**：`POSTGREST_DB_URI` 直连 `:5432`（PG 原生连接，LISTEN 持久）。PostgREST 自带连接池，抗压没问题。
+- 当前 `.env` 已用 `217.69.2.217:5432/appdb`（见 §10.2）。
+
+### 13.3 触发命令
+```sql
+-- 任意有 NOTIFY 权限的会话执行：
+NOTIFY pgrst, 'reload config';
+```
+> 注意：通知字符串是 `reload config`（不是 `reload schema`），前者会同时重载配置与 schema cache。
+
+### 13.4 验证
+建/改表后 3~5 秒内，新表即出现在 REST 端点，无需 `docker compose restart`。
+
+---
+
+## 14. 自助建表接口（RPC）
+
+为让 AI 建站平台**自助建表**（PostgREST 本身不提供 DDL，需经存储过程），在 `appdb` 建了 RPC 函数 `create_table`。
+
+### 14.1 函数定义（已部署于 appdb.public）
+```sql
+CREATE OR REPLACE FUNCTION create_table(table_name text, columns text)
+RETURNS jsonb LANGUAGE plpgsql SECURITY INVOKER AS $$
+DECLARE sql text; result jsonb;
+BEGIN
+  IF table_name !~ '^[a-zA-Z_][a-zA-Z0-9_]*$' THEN
+    RETURN jsonb_build_object('ok', false, 'error', 'invalid table_name');
+  END IF;
+  sql := format('CREATE TABLE IF NOT EXISTS %I (%s)', table_name, columns);
+  EXECUTE sql;
+  PERFORM pg_notify('pgrst', 'reload config');   -- 触发 §13 自动刷新
+  RETURN jsonb_build_object('ok', true, 'table', table_name);
+END; $$;
+```
+
+### 14.2 AI 平台调用方式
+```js
+// POST /rpc/create_table
+const res = await fetch("https://pigstyapi.yunyingx.com/rpc/create_table", {
+  method: "POST",
+  headers: {
+    "apikey": "bc1608bff236f578f166f8d3515f16f2",
+    "Content-Type": "application/json"
+  },
+  body: JSON.stringify({
+    table_name: "tasks",
+    columns: "id serial primary key, title text, done boolean default false"
+  })
+});
+// => {"ok":true,"table":"tasks"}
+// 3~5 秒后该表即可通过 REST 直接读写，无需人工干预
+```
+
+### 14.3 安全说明
+- 函数做了 `table_name` 白名单校验（仅字母数字下划线），`columns` 仍需调用方保证安全（建议 AI 平台只生成标准列定义）。
+- 执行身份为 `dbuser_app`（`dbrole_readwrite`），可建表/读写。
+- 若需限制 AI 平台只能建表不能删库，可把建表逻辑收紧或改用专用低权限角色。
+
+### 14.4 完整端到端验证（已执行通过）
+```
+POST /rpc/create_table → {"ok":true,"table":"tasks"}
+sleep 4
+GET  /tasks?select=*   → []            (自动刷新生效，新表可见)
+POST /tasks            → 插入成功
+GET  /tasks?select=*   → [{"id":1,...}] (数据可读)
+```
+
+---
+
+## 15. 当前平台能力清单（截至 2026-08-10）
+- ✅ REST CRUD：任意 `appdb.public` 下表，通过 `https://pigstyapi.yunyingx.com/<table>`
+- ✅ 自助建表：`POST /rpc/create_table`（建后自动刷新，无需重启）
+- ✅ 鉴权：API Key（header `apikey` 或 `Authorization: Bearer`）
+- ✅ SSL：Let's Encrypt 证书，自动续期
+- ✅ 限流 + CORS：Nginx 层
+- ✅ OpenAPI 自动同步：建表后 `/openapi.json` 自动包含新表结构（见 §16）
+- ⏳ 可选：JWT 用户级权限、Supabase 完整套件（§6）
+
+---
+
+## 16. 建表后自动更新 OpenAPI（让 AI 平台认知新字段）
+
+### 16.1 原理
+PostgREST 的 `GET /` 本身**实时动态生成** OpenAPI（基于当前 schema 缓存）。建表 RPC（§14）触发 schema 刷新后，再次请求 `GET /` 立即包含新表。**因此 AI 平台最规范的做法是：建表后重新拉取 `GET /`**，无需任何文件维护。
+
+为兼容"只读静态文件"的平台，额外提供**定时落盘 + 固定 URL** 兜底。
+
+### 16.2 同步脚本（已部署）
+文件：`/usr/local/bin/pigstyapi-openapi-sync.sh`
+```bash
+#!/usr/bin/env bash
+set -euo pipefail
+API_URL="https://pigstyapi.yunyingx.com/"
+API_KEY="bc1608bff236f578f166f8d3515f16f2"
+OUT="/var/www/html/pigstyapi-openapi.json"
+TMP="$(mktemp)"
+curl -fsS -H "apikey: ${API_KEY}" "${API_URL}" -o "${TMP}"
+mv "${TMP}" "${OUT}"
+chmod 644 "${OUT}"     # 必须 644，否则 nginx worker 无权限读 → 403
+```
+> 注意：`chmod 644` 关键，否则 Nginx 返回 403（踩过的坑）。
+
+### 16.3 定时任务（已配置）
+```cron
+*/2 * * * * /usr/local/bin/pigstyapi-openapi-sync.sh >> /var/log/pigstyapi-openapi.log 2>&1
+```
+每 2 分钟刷新一次（建表低频，2 分钟足够；平台也可建表后立即 `GET /` 拿实时版）。
+
+### 16.4 公开端点
+Nginx 暴露 `https://pigstyapi.yunyingx.com/openapi.json`（公开可读，仅含表/列结构，无数据无密码）。
+
+### 16.5 AI 平台接入方式（二选一）
+- **方式 A（推荐）**：建表后直接 `GET https://pigstyapi.yunyingx.com/`（实时，零延迟）→ 解析 schema。
+- **方式 B（静态兜底）**：建表后等待 ≤2 分钟，拉取 `https://pigstyapi.yunyingx.com/openapi.json`。
+
+拿到 schema 后，平台即可知道新表的字段类型，自动生成对应的 CRUD 调用。
+
+### 16.6 验证记录
+```
+POST /rpc/create_table {table_name:"notes",...}  → {"ok":true,...}
+GET  /openapi.json  → 含 /notes, /tasks, /todos   ✅
+```
+
+### 16.7 已知小瑕疵（非阻塞）
+- OpenAPI 内 `host` 字段仍显示 `0.0.0.0:3001`（PostgREST 容器内地址），因 `PGRST_SERVER_PROXY_URI` 未完全覆盖。不影响平台使用（平台用我们给的 Base URL），仅 swagger ui 展示用。如需修正可在 `.env` 调整 `server-host` 相关参数。

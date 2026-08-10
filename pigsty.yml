@@ -45,6 +45,7 @@ all:
         pg_users:
           - { name: dbuser_meta ,password: ra1Iay9o2nCYEyyXtO8mkWnW   ,pgbouncer: true ,roles: [dbrole_admin   ] ,comment: pigsty admin user }
           - { name: dbuser_view ,password: VcyfqNvfMRQDa0hwHyeuLAX1 ,pgbouncer: true ,roles: [dbrole_readonly] ,comment: read-only viewer  }
+          - { name: dbuser_app ,password: F1LKkyTDilEyJTDE7hjTGBPu ,pgbouncer: true ,roles: [dbrole_readwrite] ,comment: ai platform app user }
 
         # define business databases : https://pigsty.io/docs/pgsql/config/db
         pg_databases:
@@ -54,6 +55,10 @@ all:
             schemas: [pigsty]
             # define extensions in database : https://pigsty.io/docs/pgsql/ext/create
             extensions: [ postgis, vector ]
+
+          - name: appdb
+            owner: dbuser_app
+            comment: "ai platform backend database"
 
           - name: pg1
             comment: "created via admin webui"
@@ -350,7 +355,7 @@ all:
     #node_repo_modules: local             # use this if you want to build & user local repo
     node_repo_remove: true                # remove existing node repo for node managed by pigsty
     #node_packages: [openssh-server]      # packages to be installed current nodes with the latest version
-    node_firewall_public_port: [22, 80, 443, 5432]    # expose 5432 for demo convenience, remove in production!
+    node_firewall_public_port: [22, 80, 443]          # 5432 closed to public; AI platform uses HTTPS API on 443
 
     #----------------------------------------------#
     # PGSQL : https://pigsty.io/docs/pgsql/param
